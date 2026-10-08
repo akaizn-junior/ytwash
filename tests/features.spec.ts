@@ -68,8 +68,8 @@ test('grouping is a one-time action and undo restores Watch Later', async () => 
     await toggle.click();
     await expect(toggle).toHaveText('Group by creator');
     await expect(page.locator('.ytwash-native-group')).toHaveCount(0);
-    await expect(page.locator('ytd-playlist-video-renderer a#video-title').allTextContents())
-      .resolves.toEqual(['First video', 'Second video']);
+    expect(await page.locator('ytd-playlist-video-renderer a#video-title').allTextContents())
+      .toEqual(['First video', 'Second video']);
 
     // A later YouTube list update must not silently turn grouping back on.
     await page.locator('body').evaluate(body => {
