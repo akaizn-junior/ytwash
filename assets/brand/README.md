@@ -15,3 +15,5 @@ Palette: red `#ff0033`, white `#ffffff`. The white button is intended for colore
 Recreate PNG exports with `PLAYWRIGHT_BROWSERS_PATH=/path/to/browsers node scripts/export-brand.mjs` after installing the Playwright Chromium browser. Review store-specific listing requirements before upload; promotional graphics do not replace screenshots of the actual extension.
 
 The painter’s brush uses simple original SVG paths with broad bristle cuts for clarity at small sizes.
+
+`brush-wordmark.svg`: red lowercase ytwash on an original black dry-brush paint stroke, transparent exterior; lettering outlined for portable SVG rendering. DejaVu font license retained in FONT-LICENSE.txt.
