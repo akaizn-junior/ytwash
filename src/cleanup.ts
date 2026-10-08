@@ -39,7 +39,7 @@ export function clearCompletedVideo(): Promise<void> {
   completed = true;
   const id = trackedId;
   const task = removeViaNativeMenu(id).catch(() => {
-    console.warn('YTWash could not confirm removal from Watch Later.');
+    console.warn('YTWash could not confirm removal from the playlist.');
   });
   removal = task;
   void task.finally(() => { if (removal === task) removal = null; });

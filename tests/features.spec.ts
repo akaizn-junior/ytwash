@@ -533,7 +533,7 @@ test('partial sidebar preserves stored order and incorporates newly loaded rows 
   } finally { await context.close(); }
 });
 
-for (const {enabled, list} of [{enabled:false,list:'WL'}, {enabled:true,list:'WL'}, {enabled:true,list:'PL_cleanup'}]) {
+for (const {enabled, list} of [{enabled:false,list:'WL'}, {enabled:true,list:'WL'}, {enabled:true,list:'PL_cleanup'}, {enabled:true,list:'PL_modern'}]) {
   test(`completed grouped video clears ${list} before advancing only when enabled (${enabled})`, async () => {
     const { context, page } = await fixture();
     try {
@@ -557,6 +557,17 @@ for (const {enabled, list} of [{enabled:false,list:'WL'}, {enabled:true,list:'WL
         }
         const picker = document.createElement('ytd-add-to-playlist-renderer');
         picker.innerHTML = '<span id="label">' + (list === 'WL' ? 'Watch Later' : 'My playlist') + '</span><input type="checkbox" checked>';
+        if (list === 'PL_modern') {
+          const row = document.createElement('yt-list-item-view-model');
+          row.innerHTML = '<span class="yt-list-item-view-model__title">My playlist</span><yt-checkbox-view-model role="checkbox"></yt-checkbox-view-model>';
+          const checkbox = row.querySelector('yt-checkbox-view-model')!;
+          setTimeout(() => checkbox.setAttribute('aria-checked', 'true'), 300);
+          checkbox.addEventListener('click', () => checkbox.setAttribute('aria-checked', 'false'));
+          picker.replaceChildren(row);
+          const done = document.createElement('button'); done.textContent = 'Done';
+          done.addEventListener('click', () => { sessionStorage.setItem('ytwash-test:done', 'true'); });
+          picker.append(done); document.body.append(picker); return;
+        }
         picker.querySelector('input')!.addEventListener('change', () => {
           // Simulate an asynchronous native membership update.
           picker.querySelector('input')!.checked = true;
@@ -574,6 +585,7 @@ for (const {enabled, list} of [{enabled:false,list:'WL'}, {enabled:true,list:'WL
         return {ids:data['ytwash:playlist:' + list].entries.map((e: {id:string}) => e.id), resume:!!data['ytwash:resume:abcdefghijk']};
       }, list);
       expect(stored).toEqual(enabled ? {ids:[SECOND],resume:false} : {ids:[FIRST,SECOND],resume:true});
+      if (list === 'PL_modern') expect(await page.evaluate(() => sessionStorage.getItem('ytwash-test:done'))).toBe('true');
     } finally { await context.close(); }
   });
 }
