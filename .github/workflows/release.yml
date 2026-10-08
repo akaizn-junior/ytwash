@@ -36,7 +36,7 @@ jobs:
             const pkg = require("./package.json");
             const manifest = require("./public/manifest.json");
             const tag = process.env.RELEASE_TAG;
-            if (!new RegExp("^v" + pkg.version.replaceAll(".", "\\.") + "(?:-alpha\\.[0-9]+)?$").test(tag) || pkg.version !== manifest.version) {
+            if (!new RegExp("^v" + pkg.version.replaceAll(".", "\\.") + "(?:-(?:alpha|beta)\\.[0-9]+)?$").test(tag) || pkg.version !== manifest.version) {
               console.error("Tag, package.json, and extension manifest versions must match.");
               process.exit(1);
             }
@@ -66,6 +66,7 @@ jobs:
           tag_name: ${{ env.RELEASE_TAG }}
           target_commitish: ${{ github.sha }}
           generate_release_notes: true
+          body_path: RELEASE_NOTES.md
           prerelease: true
           files: |
             release/ytwash-*.zip
