@@ -13,7 +13,6 @@ const originalOrder = new Map<HTMLElement, number>();
 let nextIndex = 0;
 let observer: MutationObserver;
 let scheduled: number | undefined;
-let rendering = false;
 let groupingEnabled = false;
 let lastPage = '';
 let groupedSignature = '';
@@ -41,11 +40,13 @@ function entryFor(el: HTMLElement): Entry | null {
 function playlistParent(): HTMLElement | null {
   const row = document.querySelector<HTMLElement>(VIDEO_SELECTOR);
   if (!row) return null;
-  return row.closest<HTMLElement>('.' + GROUP_CLASS)?.parentElement || row.parentElement;
+  return row.parentElement;
 }
 
 function reconcileGrouping(): void {
   if (!onPlaylist()) return;
+  originalOrder.clear();
+  nextIndex = 0;
   const indexed = [...document.querySelectorAll<HTMLElement>(VIDEO_SELECTOR)]
     .map(entryFor).filter((entry): entry is Entry => entry !== null).sort((a,b) => a.index - b.index);
   indexPlaylist(playlistId()!, indexed);
@@ -59,84 +60,60 @@ function reconcileGrouping(): void {
     .map(entryFor).filter((entry): entry is Entry => entry !== null)
     .sort((a,b) => a.index - b.index).map(entry => entry.id + ':' + entry.key).join('|');
   if (!signature || signature === groupedSignature) return;
-  if (groupingEnabled) restoreRows();
   groupRows();
   groupedSignature = signature;
 }
 
-function restoreRows(): void {
-  rendering = true;
-  observer?.disconnect();
-  try {
-    for (const box of document.querySelectorAll<HTMLElement>('.' + GROUP_CLASS)) {
-      box.replaceWith(...Array.from(box.querySelectorAll<HTMLElement>(VIDEO_SELECTOR)));
-    }
-    const entries = [...originalOrder.entries()]
-      .filter(([el]) => el.isConnected)
-      .sort((a, b) => a[1] - b[1]);
-    const byParent = new Map<HTMLElement, HTMLElement[]>();
-    for (const [el] of entries) {
-      if (!el.parentElement) continue;
-      const list = byParent.get(el.parentElement) || [];
-      list.push(el);
-      byParent.set(el.parentElement, list);
-    }
-    for (const [parent, list] of byParent) {
-      for (const el of list) parent.appendChild(el);
-    }
-  } finally {
-    rendering = false;
-    observer?.observe(document.documentElement, { subtree: true, childList: true });
-  }
-}
+// Keep YouTube's renderer children and continuation sentinel in place. Moving
+// custom elements disconnects them and breaks the native incremental renderer.
+const rowStyles = new Map<HTMLElement, string>();
+const parentStyles = new Map<HTMLElement, string>();
+const style = document.createElement('style');
+style.textContent = `.${GROUP_CLASS}::before { content: attr(data-ytwash-heading); display:block;
+  font:600 14px Arial,sans-serif; color:var(--yt-spec-text-primary,#0f0f0f); padding:10px 6px 4px; }`;
+(document.head || document.documentElement).append(style);
 
-function makeGroup(creator: string, key: string, entries: Entry[]): HTMLElement {
-  const box = document.createElement('div');
-  box.className = GROUP_CLASS;
-  box.dataset.creator = key;
-  box.setAttribute('aria-label', creator + ' · ' + entries.length + ' videos');
-  box.style.cssText = 'box-sizing:border-box;width:100%;margin:4px 0 10px;padding:4px 6px;border:0;background:transparent';
-  const heading = document.createElement('div');
-  heading.textContent = creator + ' · ' + entries.length + ' videos';
-  heading.style.cssText = 'font:600 14px Arial,sans-serif;color:var(--yt-spec-text-primary,#0f0f0f);margin:0 0 4px';
-  box.append(heading);
-  return box;
+function restoreRows(): void {
+  for (const [row, css] of rowStyles) {
+    row.style.cssText = css;
+    row.classList.remove(GROUP_CLASS, 'ytwash-grouped-row');
+    delete row.dataset.ytwashHeading;
+  }
+  for (const [parent, css] of parentStyles) parent.style.cssText = css;
+  rowStyles.clear();
+  parentStyles.clear();
 }
 
 function groupRows(): void {
-  if (!onPlaylist() || rendering) return;
-  const nodes = [...document.querySelectorAll<HTMLElement>(VIDEO_SELECTOR)];
-  const entries = nodes.map(entryFor).filter((entry): entry is Entry => entry !== null)
-    .sort((a, b) => a.index - b.index);
+  if (!onPlaylist()) return;
   const parent = playlistParent();
-  if (!parent || entries.length === 0) return;
-
-  rendering = true;
-  observer?.disconnect();
-  try {
-    const groups = new Map<string, Entry[]>();
-    for (const entry of entries) {
-      const list = groups.get(entry.key) || [];
-      list.push(entry);
-      groups.set(entry.key, list);
+  if (!parent) return;
+  const entries = Array.from(parent.children)
+    .filter((node): node is HTMLElement => node instanceof HTMLElement && node.matches(VIDEO_SELECTOR))
+    .map(entryFor).filter((entry): entry is Entry => entry !== null);
+  if (!entries.length) return;
+  if (!parentStyles.has(parent)) parentStyles.set(parent, parent.style.cssText);
+  parent.style.display = 'flex';
+  parent.style.flexDirection = 'column';
+  const ordered = creatorOrder(entries);
+  const counts = new Map<string, number>();
+  for (const entry of entries) counts.set(entry.key, (counts.get(entry.key) || 0) + 1);
+  let previous = '';
+  ordered.forEach((entry, index) => {
+    const row = entry.element;
+    if (!rowStyles.has(row)) rowStyles.set(row, row.style.cssText);
+    // Negative order keeps native continuation/loading controls after all rows.
+    row.style.order = String(index - ordered.length);
+    row.classList.remove(GROUP_CLASS);
+    delete row.dataset.ytwashHeading;
+    row.classList.add('ytwash-grouped-row');
+    if (entry.key !== previous && counts.get(entry.key)! > 1) {
+      row.classList.add(GROUP_CLASS);
+      row.dataset.ytwashHeading = entry.creator + ' · ' + counts.get(entry.key) + ' videos';
     }
-    const multiple = [...groups.entries()].filter(([, list]) => list.length >= 2);
-    const grouped = new Set(multiple.flatMap(([, list]) => list.map(entry => entry.element)));
-
-    for (const [key, list] of multiple.sort((a, b) => a[1][0].index - b[1][0].index)) {
-      const box = makeGroup(list[0].creator, key, list);
-      parent.appendChild(box);
-      for (const entry of list) box.appendChild(entry.element);
-    }
-    // Creators with one video remain ordinary YouTube rows.
-    for (const entry of entries) {
-      if (!grouped.has(entry.element)) parent.appendChild(entry.element);
-    }
-    groupingEnabled = true;
-  } finally {
-    rendering = false;
-    observer?.observe(document.documentElement, { subtree: true, childList: true });
-  }
+    previous = entry.key;
+  });
+  groupingEnabled = true;
 }
 
 function resetForNavigation(): void {
@@ -155,11 +132,13 @@ function scheduleControl(): void {
   }, 150);
 }
 
-// Reconcile only when loaded entries change; our own row moves are disconnected.
+// Observe native row changes only; grouping changes CSS, never renderer children.
 observer = new MutationObserver(mutations => {
-  if (rendering || !onPlaylist()) return;
+  if (!onPlaylist()) return;
 
-  scheduleControl();
+  if (mutations.some(mutation => [...mutation.addedNodes, ...mutation.removedNodes].some(node =>
+    node instanceof Element && (node.matches(VIDEO_SELECTOR) || node.querySelector(VIDEO_SELECTOR))) ||
+    (mutation.target instanceof Element && mutation.target.closest(VIDEO_SELECTOR)))) scheduleControl();
 });
 observer.observe(document.documentElement, { subtree: true, childList: true });
 
@@ -204,8 +183,9 @@ document.addEventListener('click', event => {
     return;
   }
   if (preferences.groupByCreator && !preferences.groupPlayback) return;
-  const ordered = [...document.querySelectorAll<HTMLElement>(VIDEO_SELECTOR)]
-    .map(entryFor).filter((item): item is Entry => item !== null);
+  const nativeEntries = [...document.querySelectorAll<HTMLElement>(VIDEO_SELECTOR)]
+    .map(entryFor).filter((item): item is Entry => item !== null).sort((a,b) => a.index - b.index);
+  const ordered = preferences.groupByCreator ? creatorOrder(nativeEntries) : nativeEntries;
   const selected = ordered.findIndex(item => item.element === row);
   if (selected < 0) return;
   const queue = ordered.slice(selected).map(item => item.id);

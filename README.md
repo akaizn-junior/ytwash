@@ -53,7 +53,7 @@ YTWash adds no timestamp button or automatic-removal checkbox to the video page.
 ## What to expect from this alpha
 
 - YTWash works inside YouTube; it does not create or manage a separate playlist.
-- Creator grouping depends on videos YouTube has loaded into the page. For large playlists, load more videos in YouTube, then turn grouping off and on again.
+- Creator grouping depends on videos YouTube has loaded into the page. Newly loaded rows are grouped automatically without moving YouTube’s native renderer elements or loading controls.
 - Saved timestamps are local to the browser profile; they do not sync across devices.
 - Playback, resume, and playlist controls depend on YouTube's current interface and may stop working if YouTube changes it.
 - Automated Chromium and Firefox tests use simulated YouTube pages. Real, signed-in YouTube behavior still needs validation.
