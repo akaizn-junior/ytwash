@@ -12,6 +12,10 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - run: npx playwright install --with-deps chromium
+      - name: Generate deterministic playable media fixture
+        run: |
+          mkdir -p tests/fixtures
+          ffmpeg -loglevel error -f lavfi -i color=c=black:s=16x16:r=1 -t 120 -an -c:v libx264 -pix_fmt yuv420p -preset ultrafast -crf 40 -movflags +faststart -y tests/fixtures/mock-video.mp4
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v4
         if: always()
