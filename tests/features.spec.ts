@@ -10,7 +10,7 @@ const playlist = '<!doctype html><html><body>' +
   '</body></html>';
 const watch = '<!doctype html><html><body>' +
   '<ytd-watch-metadata><div id="actions"><button id="native-save" aria-label="Save">Save</button></div></ytd-watch-metadata>' +
-  '<video class="html5-main-video" preload="auto" muted src="/fixtures/mock-video.mp4"></video>' +
+  '<video class="html5-main-video" preload="auto" muted src="/fixtures/mock-video.webm"></video>' +
   '<script>' +
   'const media=document.querySelector("video");' +
   'document.getElementById("native-save").addEventListener("click",()=>{' +
@@ -29,8 +29,8 @@ async function fixture(): Promise<{ context: BrowserContext; page: Page }> {
   const page = await context.newPage();
   await page.route('https://www.youtube.com/**', async route => {
     const url = new URL(route.request().url());
-    if (url.pathname === '/fixtures/mock-video.mp4') {
-      await route.fulfill({ status: 200, contentType: 'video/mp4', path: resolve('tests/fixtures/mock-video.mp4') });
+    if (url.pathname === '/fixtures/mock-video.webm') {
+      await route.fulfill({ status: 200, contentType: 'video/webm', path: resolve('tests/fixtures/mock-video.webm') });
       return;
     }
     await route.fulfill({ status: 200, contentType: 'text/html',
