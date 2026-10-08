@@ -1,3 +1,4 @@
+import { startCreatorPlayback } from './playback';
 import './cleanup';
 import './timestamps';
 
@@ -65,6 +66,25 @@ function render(): void {
   if (rendering) return;
   const nodes = [...document.querySelectorAll<HTMLElement>(VIDEO_SELECTOR)];
   const entries = nodes.map(entryFor).filter((e):e is Entry=>e!==null).sort((a,b)=>a.index-b.index);
+  // Playback follows the same order as the rendered grouped Watch Later rows.
+  // Listen once, keeping native video links and menus untouched until a video is selected.
+  const playHost = document.documentElement;
+  if (!playHost.dataset.ytwashPlaybackBound) {
+    playHost.dataset.ytwashPlaybackBound = 'true';
+    document.addEventListener('click', event => {
+      if (!onWatchLater() || event.defaultPrevented || event.button !== 0 ||
+          event.metaKey || event.ctrlKey || event.shiftKey || event.altKey ||
+          !(event.target instanceof Element)) return;
+      const link = event.target.closest<HTMLAnchorElement>('a#video-title, ytd-thumbnail a[href*="/watch"], a#thumbnail[href*="/watch"]');
+      const row = link?.closest<HTMLElement>(VIDEO_SELECTOR);
+      if (!link || !row) return;
+      const ordered = [...document.querySelectorAll<HTMLElement>(VIDEO_SELECTOR)].map(entryFor).filter((item): item is Entry => item !== null);
+      const selected = ordered.findIndex(item => item.element === row);
+      if (selected < 0) return;
+      const queue = ordered.slice(selected).map(item => item.id);
+      if (queue.length > 0 && startCreatorPlayback('Watch Later', queue)) event.preventDefault();
+    }, true);
+  }
   const firstParent = entries[0]?.element.parentElement;
   const parent = firstParent?.closest<HTMLElement>('.' + GROUP_CLASS)?.parentElement || firstParent;
   if (!parent) return;
