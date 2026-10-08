@@ -163,7 +163,7 @@ document.addEventListener('click', event => {
       event.metaKey || event.ctrlKey || event.shiftKey || event.altKey ||
       !(event.target instanceof Element)) return;
   const play = event.target.closest<HTMLButtonElement>('button');
-  if (play && preferences.groupByCreator && preferences.groupPlayback &&
+  if (play && preferences.groupByCreator &&
       play.closest('ytd-playlist-header-renderer, ytd-playlist-header-view-model, ytd-playlist-sidebar-primary-info-renderer, ytd-playlist-header-renderer yt-button-shape') &&
       /^(play(?: all)?|reproduzir(?: tudo)?|tocar(?: tudo)?)(\s|$)/i.test(play.getAttribute('aria-label') || play.textContent || '')) {
     const entries = [...document.querySelectorAll<HTMLElement>(VIDEO_SELECTOR)]
@@ -181,7 +181,7 @@ document.addEventListener('click', event => {
   if (!link) return;
   if (!row) {
     const url = new URL(link.href);
-    if (!preferences.groupByCreator || !preferences.groupPlayback || url.pathname !== '/watch' ||
+    if (!preferences.groupByCreator || url.pathname !== '/watch' ||
         url.searchParams.get('list') !== playlistId() ||
         !link.closest('ytd-playlist-header-renderer, ytd-playlist-header-view-model, ytd-playlist-sidebar-primary-info-renderer, ytd-playlist-header-renderer yt-button-shape')) return;
     const entries = [...document.querySelectorAll<HTMLElement>(VIDEO_SELECTOR)]
@@ -198,7 +198,6 @@ document.addEventListener('click', event => {
     }
     return;
   }
-  if (preferences.groupByCreator && !preferences.groupPlayback) return;
   const nativeEntries = [...document.querySelectorAll<HTMLElement>(VIDEO_SELECTOR)]
     .map(entryFor).filter((item): item is Entry => item !== null).sort((a,b) => a.index - b.index);
   const ordered = preferences.groupByCreator ? creatorOrder(nativeEntries) : nativeEntries;

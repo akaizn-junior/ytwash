@@ -46,14 +46,14 @@ async function saveCurrent(id: string, seconds: number): Promise<void> {
   saving = true;
   try {
     await preferencesReady;
-    if (!preferences.enhancedSave || watchId() !== id) return;
+    if (watchId() !== id) return;
     // Persist the user's explicit Save action even when YouTube's chooser
     // changes markup or cannot expose a confirmed Watch Later state.
     if (!await store(id, seconds)) return;
     if (watchId() !== id) return;
     // Let the trusted native Save click open its playlist chooser normally.
     const checkbox = await waitForWatchLater(id);
-    if (!checkbox || watchId() !== id || !preferences.enhancedSave) return;
+    if (!checkbox || watchId() !== id) return;
     const membership = checked(checkbox);
     if (membership === null) return;
     if (!membership) {
@@ -81,7 +81,7 @@ async function saveCurrent(id: string, seconds: number): Promise<void> {
   } finally { saving = false; }
 }
 function decorateSave(): void {
-  const controls = new Set(preferences.enhancedSave && getId() ? saveControls().map(control =>
+  const controls = new Set(getId() ? saveControls().map(control =>
     control.querySelector<HTMLElement>('tp-yt-paper-item, [role="menuitem"], .yt-list-item-view-model__container, button') || control
   ) : []);
   for (const [control, original] of saveLayouts) {
@@ -120,7 +120,7 @@ function decorateSave(): void {
   }
 }
 document.addEventListener('click', event => {
-  if (!event.isTrusted || event.defaultPrevented || !preferences.enhancedSave || saving ||
+  if (!event.isTrusted || event.defaultPrevented || saving ||
       !(event.target instanceof Element)) return;
   const control = saveControls().find(node => node.contains(event.target as Node));
   const id = getId();
@@ -136,12 +136,11 @@ new MutationObserver(() => {
 void preferencesReady.then(decorateSave);
 async function applyResume(id: string, video: HTMLVideoElement): Promise<void> {
   await preferencesReady;
-  if (!preferences.resume) return;
   const saved = await load(id);
   if (getId() !== id || activeVideo !== video || resumeApplied || !saved) return;
   if (hasExplicitTime()) return;
   const seek = (): void => {
-    if (!preferences.resume || getId() !== id || activeVideo !== video || resumeApplied || video.readyState < 1) return;
+    if (getId() !== id || activeVideo !== video || resumeApplied || video.readyState < 1) return;
     if (Number.isFinite(video.duration) && saved.seconds >= video.duration - 5) {
       resumeApplied = true; return;
     }

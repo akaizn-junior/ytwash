@@ -155,20 +155,19 @@ test('native Save adds Watch Later and saves the click timestamp without extra c
   } finally { await context.close(); }
 });
 
-test('options update open tabs and disabling enhanced Save preserves native chooser', async () => {
+test('built-in watch features cannot be disabled by legacy stored preferences', async () => {
   const { context, page } = await fixture();
   try {
     await page.goto('https://www.youtube.com/watch?v=' + FIRST);
-    await expect(page.locator('.ytwash-save-lightning')).toBeVisible();
     const options = await openOptions(context);
-    await expect(options.locator('[data-key="ytwash:auto-remove-completed"]')).not.toBeChecked();
-    await options.locator('[data-key="ytwash:enhanced-save"]').uncheck();
-    await expect(options.locator('#status')).toHaveText('Preferences saved.');
-    await expect(page.locator('.ytwash-save-lightning')).toHaveCount(0);
+    await expect(options.locator('input[data-key]')).toHaveCount(2);
+    await options.evaluate(() => chrome.storage.local.set({
+      'ytwash:enhanced-save': false, 'ytwash:resume-enabled': false, 'ytwash:group-playback': false,
+    }));
+    await page.reload();
+    await expect(page.locator('.ytwash-save-lightning')).toBeVisible();
     await page.locator('#native-save').click();
-    await expect(page.locator('#fake-picker input')).not.toBeChecked();
-    await options.reload();
-    await expect(options.locator('[data-key="ytwash:enhanced-save"]')).not.toBeChecked();
+    await expect(page.locator('#fake-picker input')).toBeChecked();
   } finally { await context.close(); }
 });
 
@@ -214,11 +213,10 @@ test('Watch Later opens saved positions using YouTube timestamp URLs and respect
     await page.locator('a#video-title').first().evaluate((a: HTMLAnchorElement) => { a.href += '&t=10s'; });
     await page.locator('a#video-title').first().click();
     await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + FIRST + '&t=10s&list=WL');
-    await options.locator('[data-key="ytwash:resume-enabled"]').uncheck();
-    await expect(options.locator('#status')).toHaveText('Preferences saved.');
+    await options.evaluate(() => chrome.storage.local.set({'ytwash:resume-enabled': false}));
     await page.goto('https://www.youtube.com/playlist?list=WL');
     await page.locator('a#video-title').first().click();
-    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + FIRST + '&list=WL');
+    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + FIRST + '&list=WL&t=35s');
   } finally { await context.close(); }
 });
 
@@ -286,8 +284,7 @@ for (const display of ['flex', 'grid', 'block']) {
       expect(icon).not.toBeNull();
       expect(Math.abs(icon!.y + icon!.height / 2 - label!.y - label!.height / 2)).toBeLessThan(2);
       expect(icon!.x).toBeGreaterThan(label!.x);
-      const options = await openOptions(context);
-      await options.locator('[data-key="ytwash:enhanced-save"]').uncheck();
+      await row.locator('yt-formatted-string').evaluate(label => { label.textContent = 'Download'; });
       await expect(row.locator('.ytwash-save-lightning')).toHaveCount(0);
       expect(await row.evaluate(node => node.style.paddingRight)).toBe('16px');
       expect(await row.evaluate(node => node.style.position)).toBe('');
@@ -380,13 +377,13 @@ for (const start of ['header link', 'header button', 'direct playlist URL']) {
   });
 }
 
-test('turning grouped playback off preserves native Play all behavior', async () => {
+test('turning grouping off preserves native Play all behavior', async () => {
   const { context, page } = await fixture(interleaved);
   try {
     await page.goto('https://www.youtube.com/playlist?list=PL_grouped');
     const options = await openOptions(context);
     await options.locator('[data-key="ytwash:group-by-creator"]').check();
-    await options.locator('[data-key="ytwash:group-playback"]').uncheck();
+    await options.locator('[data-key="ytwash:group-by-creator"]').uncheck();
     await expect(options.locator('#status')).toHaveText('Preferences saved.');
     await page.locator('#play-all').click();
     await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + FIRST + '&list=PL_grouped');
