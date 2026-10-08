@@ -17,6 +17,8 @@ const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 manifest.content_scripts[0].matches.push('http://127.0.0.1/*');
 manifest.host_permissions.push('http://127.0.0.1/*');
 writeFileSync(manifestPath, JSON.stringify(manifest));
+// Expose only the temporary add-on's options URL to the local test fixture.
+writeFileSync(join(bundle, 'content.js'), readFileSync(join(bundle, 'content.js'), 'utf8') + '\ndocument.documentElement.dataset.ytwashOptionsUrl = chrome.runtime.getURL(\"options.html\");');
 const addon = join(temp, 'test-addon.zip');
 execFileSync('zip', ['-q', '-r', addon, '.'], { cwd: bundle });
 const playlist = '<!doctype html><html><body>' +
@@ -25,7 +27,13 @@ const playlist = '<!doctype html><html><body>' +
   '</body></html>';
 const watch = '<!doctype html><html><body>' +
   '<ytd-watch-metadata><div id="actions"><button aria-label="Save">Save</button></div></ytd-watch-metadata>' +
-  '<video class="html5-main-video" muted preload="auto" src="/fixtures/mock-video.webm"></video></body></html>';
+  '<video class="html5-main-video" muted preload="auto" src="/fixtures/mock-video.webm"></video>' +
+  '<script>document.querySelector("button").addEventListener("click",()=>{' +
+  'document.body.dataset.saveOpened="true";if(document.getElementById("picker"))return;' +
+  'const picker=document.createElement("ytd-add-to-playlist-renderer");picker.id="picker";' +
+  "picker.innerHTML='<span id=\"label\">Watch Later</span><input type=\"checkbox\" aria-label=\"Watch Later\">';" +
+  'picker.querySelector("input").addEventListener("change",()=>{document.body.dataset.removed=String(!picker.querySelector("input").checked);});' +
+  'document.body.append(picker);});</script></body></html>';
 const server = createServer((req, res) => {
   const url = new URL(req.url ?? '/', 'http://127.0.0.1');
   if (url.pathname === '/fixtures/mock-video.webm') {
@@ -58,17 +66,30 @@ try {
   console.log('PASS Firefox: grouping starts on request');
   
   await driver.get(origin + '/watch?v=' + first);
-  const toggle = await driver.wait(until.elementLocated(By.css('#ytwash-auto-remove-toggle')), 15000);
-  if (!(await toggle.isSelected())) await toggle.click();
-  await driver.wait(async () => (await driver.findElement(By.css('#ytwash-auto-remove-message')).getText()).includes('enabled'), 6000);
+  await driver.wait(until.elementLocated(By.css('.ytwash-save-lightning')), 15000);
+  assert.equal((await driver.findElements(By.css('#ytwash-save-position, #ytwash-auto-remove-toggle'))).length, 0);
+  const optionsUrl = await driver.executeScript('return document.documentElement.dataset.ytwashOptionsUrl');
+  await driver.get(optionsUrl);
+  await driver.wait(until.elementIsEnabled(await driver.findElement(By.css('#preferences'))), 10000);
+  const cleanup = await driver.findElement(By.css('[data-key="ytwash:auto-remove-completed"]'));
+  assert.equal(await cleanup.isSelected(), false);
+  await cleanup.click();
+  await driver.wait(async () => (await driver.findElement(By.css('#status')).getText()) === 'Preferences saved.', 5000);
+  await driver.get(origin + '/watch?v=' + first);
+  await driver.wait(until.elementLocated(By.css('.ytwash-save-lightning')), 15000);
   const playbackError = await driver.executeAsyncScript(
     "const done=arguments[arguments.length-1];const v=document.querySelector('video');v.muted=true;v.play().then(()=>done(null)).catch(e=>done(String(e)))"
   );
   if (playbackError) throw new Error(String(playbackError));
   await driver.wait(async () => (await driver.executeScript("return document.querySelector('video').currentTime")) > 6, 15000);
   await driver.executeScript("document.querySelector('video').dispatchEvent(new Event('ended'))");
-  await driver.wait(async () => (await driver.findElement(By.css('#ytwash-auto-remove-message')).getText()).includes('nothing removed'), 7000);
-  console.log('PASS Firefox: fail-closed automatic cleanup');
+  await driver.wait(async () => (await driver.executeScript("return document.body.dataset.saveOpened === 'true'")), 7000);
+  assert.equal(await driver.findElement(By.css('#picker input')).isSelected(), false);
+  assert.notEqual(await driver.executeScript('return document.body.dataset.removed'), 'true');
+  console.log('PASS Firefox: options-driven fail-closed automatic cleanup');
+  await driver.findElement(By.css('button[aria-label="Save"]')).click();
+  await driver.wait(async () => (await driver.findElement(By.css('#picker input'))).isSelected(), 5000);
+  console.log('PASS Firefox: native Save adds Watch Later');
 } finally {
   if (driver) await driver.quit();
   await new Promise(resolveClose => server.close(resolveClose));
