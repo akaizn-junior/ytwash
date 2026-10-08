@@ -57,6 +57,8 @@ jobs:
           (cd dist && zip -q -r "../release/ytwash-${RELEASE_TAG}.zip" .)
           (cd dist-firefox && zip -q -r "../release/ytwash-${RELEASE_TAG}-firefox.zip" .)
           (cd release && sha256sum "ytwash-${RELEASE_TAG}-firefox.zip" > "ytwash-${RELEASE_TAG}-firefox.sha256")
+          zip -q -r "release/ytwash-${RELEASE_TAG}-publishing-assets.zip" assets/brand public/icons site/icons site/favicon.ico
+          (cd release && sha256sum "ytwash-${RELEASE_TAG}-publishing-assets.zip" > "ytwash-${RELEASE_TAG}-publishing-assets.sha256")
           (cd release && sha256sum "ytwash-${RELEASE_TAG}.zip" > "ytwash-${RELEASE_TAG}.sha256")
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
