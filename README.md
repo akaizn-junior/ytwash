@@ -40,3 +40,16 @@ To try the development build, open Chrome → Extensions → Developer mode → 
 Keep everything inside YouTube, preserve the native playlist and controls, and never create duplicate playlists.
 
 Smart prefetch and seamless transitions are deferred to V2.
+
+
+## Versioned releases
+
+GitHub Actions builds the extension once for every pushed version tag such as `v0.1.0` and publishes the output to **GitHub Releases**. Before publishing, the workflow checks that the tag matches both `package.json` and `public/manifest.json`, runs TypeScript checks, and verifies the extension build.
+
+Release assets:
+- `ytwash-vX.Y.Z.zip` — unpack to a folder, then in Chrome/Edge use **Extensions → Developer mode → Load unpacked** and select that folder.
+- `ytwash-vX.Y.Z.sha256` — SHA-256 checksum of the ZIP.
+
+Firefox can load the extension temporarily for development/testing; permanent distribution in Firefox requires Mozilla add-on signing. A GitHub ZIP is not automatically a signed Firefox add-on.
+
+Release workflow: `.github/workflows/release.yml`. To publish, update both version fields, merge the changes, then create and push the matching `vX.Y.Z` tag on the release commit. Regular branch and PR builds remain available as GitHub Actions artifacts; they are not published releases. Version tags below 1.0 are published as prereleases.
