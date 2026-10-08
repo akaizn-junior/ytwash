@@ -21,7 +21,7 @@ YTWash makes YouTube's **Watch Later** playlist easier to browse and finish. Fin
 
 YTWash is not currently distributed through a browser extension store, so it must be installed manually.
 
-**Firefox:** YTWash is also being tested in Firefox. The GitHub ZIP is not a signed Firefox add-on and cannot be installed permanently as a regular Firefox extension. For temporary testing, open `about:debugging#/runtime/this-firefox`, select **Load Temporary Add-on**, and choose `manifest.json` from the extracted folder. Firefox removes temporary add-ons when the browser closes.
+**Firefox:** Download the ZIP ending in `-firefox.zip`. YTWash is also being tested in Firefox. The GitHub ZIP is not a signed Firefox add-on and cannot be installed permanently as a regular Firefox extension. For temporary testing, open `about:debugging#/runtime/this-firefox`, select **Load Temporary Add-on**, and choose `manifest.json` from the extracted folder. Firefox removes temporary add-ons when the browser closes.
 
 ## What you can do
 
