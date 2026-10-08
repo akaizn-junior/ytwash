@@ -39,6 +39,19 @@ async function fixture(): Promise<{ context: BrowserContext; page: Page }> {
   return { context, page };
 }
 
+test('Watch Later follows grouped playback order without extra controls', async () => {
+  const { context, page } = await fixture();
+  try {
+    await page.goto('https://www.youtube.com/playlist?list=WL');
+    await expect(page.locator('.ytwash-native-group ytd-playlist-video-renderer')).toHaveCount(2, { timeout: 15000 });
+    await page.locator('.ytwash-native-group a#video-title').first().click();
+    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + FIRST);
+    await expect(page.locator('#ytwash-playback-control')).toHaveCount(0);
+    await page.locator('video').evaluate((v: HTMLVideoElement) => v.dispatchEvent(new Event('ended')));
+    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + SECOND, { timeout: 12000 });
+  } finally { await context.close(); }
+});
+
 test('completed video is not removed when Watch Later membership is uncertain', async () => {
   const { context, page } = await fixture();
   try {
