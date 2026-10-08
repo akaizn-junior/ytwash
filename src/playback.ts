@@ -36,21 +36,6 @@ export function startCreatorPlayback(creator: string, ids: string[]): boolean {
 function videoId(): string | null {
   return location.pathname === '/watch' ? new URLSearchParams(location.search).get('v') : null;
 }
-function renderControls(queue: CreatorQueue): void {
-  let wrapper = document.getElementById('ytwash-playback-control');
-  if (!wrapper) {
-    const host = document.querySelector<HTMLElement>('ytd-watch-metadata #actions, ytd-watch-metadata #top-row');
-    if (!host) return;
-    wrapper = document.createElement('div'); wrapper.id = 'ytwash-playback-control';
-    wrapper.style.cssText = 'display:flex;align-items:center;gap:8px;margin:8px;color:var(--yt-spec-text-primary,#eee);font:13px Arial,sans-serif';
-    const label = document.createElement('span');label.id='ytwash-playback-label';
-    const stop = document.createElement('button');stop.type='button';stop.textContent='Stop creator playback';
-    stop.style.cssText='border:0;border-radius:18px;padding:8px 12px;cursor:pointer;background:var(--yt-spec-badge-chip-background,#333);color:inherit';
-    stop.addEventListener('click',stopCreatorPlayback);wrapper.append(label,stop);host.append(wrapper);
-  }
-  const label = document.getElementById('ytwash-playback-label');
-  if (label) label.textContent = queue.creator + ' · ' + (queue.index + 1) + '/' + queue.ids.length;
-}
 function ended(): void {
   const queue = getQueue(), id = videoId();
   if (!queue || !id || queue.ids[queue.index] !== id || advancing) return;
@@ -72,7 +57,6 @@ function reconcilePlayback(): void {
     if (attached) { attached.removeEventListener('ended',ended); attached=null; }
     return;
   }
-  renderControls(queue);
   const video = document.querySelector<HTMLVideoElement>('video.html5-main-video');
   if (video && video !== attached) {
     attached?.removeEventListener('ended',ended);
