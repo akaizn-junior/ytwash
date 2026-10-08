@@ -46,27 +46,13 @@ try {
     .setFirefoxOptions(new firefox.Options().addArguments('-headless')).build();
   await driver.installAddon(addon, true);
   await driver.get(origin + '/playlist?list=WL');
-  const controls = await driver.wait(until.elementLocated(By.css('#ytwash-native-controls')), 15000);
-  await driver.wait(async () => (await controls.getText()).includes('Group by creator (1)'), 15000);
-  const groups = await driver.findElements(By.css('.ytwash-native-group'));
-  assert.equal(groups.length, 1, 'Only creators with two or more videos are grouped');
-  assert.match(await groups[0].getText(), /Example Creator · 2 videos/);
-  assert.equal((await driver.findElements(By.css('ytd-playlist-video-renderer'))).length, 2, 'Native playlist rows retained');
-  const groupToggle = await driver.findElement(By.css('.ytwash-native-group button[aria-expanded]'));
-  await groupToggle.click();
-  await driver.wait(async () => (await driver.findElements(By.css('ytd-playlist-video-renderer:not([style*="display: none"])'))).length === 0, 8000);
-  await groupToggle.click();
-  await driver.wait(async () => (await driver.findElements(By.css('ytd-playlist-video-renderer:not([style*="display: none"])'))).length === 2, 8000);
-  console.log('PASS Firefox: native creator grouping, toggle, and original rows');
-
-  const play = By.css('.ytwash-native-group button[aria-label="Play all indexed Watch Later videos from Example Creator"]');
-  await driver.findElement(play).click();
-  await driver.wait(until.urlContains('/watch?v=' + first), 12000);
-  await driver.wait(until.elementLocated(By.css('#ytwash-playback-label')), 12000);
-  await driver.executeScript("document.querySelector('video').dispatchEvent(new Event('ended'))");
-  await driver.wait(until.urlContains('/watch?v=' + second), 12000);
-  console.log('PASS Firefox: sequential creator playback');
-
+  const group = await driver.wait(until.elementLocated(By.css('.ytwash-native-group')), 15000);
+  assert.match(await group.getText(), /Example Creator · 2 videos/);
+  assert.equal((await driver.findElements(By.css('.ytwash-native-group ytd-playlist-video-renderer'))).length, 2);
+  assert.equal((await driver.findElements(By.css('.ytwash-native-group button'))).length, 0);
+  assert.equal((await driver.findElements(By.css('#ytwash-native-controls'))).length, 0);
+  console.log('PASS Firefox: minimal native grouping without extra controls');
+  
   await driver.get(origin + '/watch?v=' + first);
   const toggle = await driver.wait(until.elementLocated(By.css('#ytwash-auto-remove-toggle')), 15000);
   if (!(await toggle.isSelected())) await toggle.click();
