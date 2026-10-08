@@ -17,7 +17,7 @@ jobs:
       - name: Generate deterministic playable media fixture
         run: |
           mkdir -p tests/fixtures
-          ffmpeg -loglevel error -f lavfi -i color=c=black:s=16x16:r=1 -t 120 -an -c:v libx264 -pix_fmt yuv420p -preset ultrafast -crf 40 -movflags +faststart -y tests/fixtures/mock-video.mp4
+          ffmpeg -loglevel error -f lavfi -i color=c=black:s=32x32:r=2 -t 120 -an -c:v libvpx -b:v 100k -g 1 -deadline realtime -cpu-used 8 -y tests/fixtures/mock-video.webm
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v4
         if: always()
