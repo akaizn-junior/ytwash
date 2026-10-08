@@ -47,7 +47,7 @@ test('unpacked extension loads and groups Watch Later videos on request', async 
   }
 });
 
-test('single-video creators appear under Rest and native rows remain intact', async () => {
+test('single-video creators appear under Everything else and native rows remain intact', async () => {
   const context = await chromium.launchPersistentContext('', {
     channel: 'chromium', headless: true,
     args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`]
@@ -55,7 +55,7 @@ test('single-video creators appear under Rest and native rows remain intact', as
   try {
     const page = await context.newPage();
     await page.route('https://www.youtube.com/**', async route => {
-      await route.fulfill({ status: 200, contentType: 'text/html', body: `<!doctype html><html><body>
+      await route.fulfill({ status: 200, contentType: 'text/html', body: `<!doctype html><html><head><style>ytd-playlist-video-renderer {display:flex;align-items:center} a {display:block}</style></head><body>
         <ytd-playlist-video-renderer><a id="video-title" href="/watch?v=abcdefghijk">One</a><ytd-channel-name><a href="/channel/a">Creator A</a></ytd-channel-name></ytd-playlist-video-renderer>
         <ytd-playlist-video-renderer><a id="video-title" href="/watch?v=lmnopqrstuv">Two</a><ytd-channel-name><a href="/channel/a">Creator A</a></ytd-channel-name></ytd-playlist-video-renderer>
         <ytd-playlist-video-renderer><a id="video-title" href="/watch?v=12345678901">Three</a><ytd-channel-name><a href="/channel/b">Creator B</a></ytd-channel-name></ytd-playlist-video-renderer>
@@ -69,10 +69,19 @@ test('single-video creators appear under Rest and native rows remain intact', as
     await settings.locator('[data-key="ytwash:group-by-creator"]').check();
     await expect(page.locator('.ytwash-native-group')).toHaveCount(2, { timeout: 15000 });
     await expect(page.locator('.ytwash-native-group').first()).toHaveAttribute('data-ytwash-heading', 'Creator A · 2 videos');
-    await expect(page.locator('.ytwash-native-group').last()).toHaveAttribute('data-ytwash-heading', 'Rest');
+    await expect(page.locator('.ytwash-native-group').last()).toHaveAttribute('data-ytwash-heading', 'Everything else');
     await expect(page.locator('ytd-playlist-video-renderer')).toHaveCount(3);
     await expect(page.locator('ytd-playlist-video-renderer').last()).toContainText('Three');
     await expect(page.locator('.ytwash-grouped-row')).toHaveCount(3);
+    const layout = await page.locator('.ytwash-native-group').first().evaluate(row => {
+      const heading = getComputedStyle(row, '::before');
+      return { position: heading.position, top: heading.top,
+        spaceAboveVideo: row.querySelector('a')!.getBoundingClientRect().top - row.getBoundingClientRect().top };
+    });
+    expect(layout.position).toBe('absolute');
+    expect(layout.top).toBe('8px');
+    expect(layout.spaceAboveVideo).toBeGreaterThanOrEqual(40);
+
     await expect(page.locator('.ytwash-native-group button')).toHaveCount(0);
   } finally { await context.close(); }
 });

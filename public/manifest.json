@@ -18,10 +18,7 @@
   ],
   "background": {
     "service_worker": "background.js",
-    "type": "module",
-    "scripts": [
-      "background.js"
-    ]
+    "type": "module"
   },
   "content_scripts": [
     {
@@ -33,11 +30,5 @@
       ],
       "run_at": "document_idle"
     }
-  ],
-  "browser_specific_settings": {
-    "gecko": {
-      "id": "ytwash@akaizn-junior.github.io",
-      "strict_min_version": "109.0"
-    }
-  }
+  ]
 }

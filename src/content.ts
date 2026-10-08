@@ -69,8 +69,17 @@ function reconcileGrouping(): void {
 const rowStyles = new Map<HTMLElement, string>();
 const parentStyles = new Map<HTMLElement, string>();
 const style = document.createElement('style');
-style.textContent = `.${GROUP_CLASS}::before { content: attr(data-ytwash-heading); display:block;
-  font:600 14px Arial,sans-serif; color:var(--yt-spec-text-primary,#0f0f0f); padding:10px 6px 4px; }`;
+style.textContent = `
+  ytd-playlist-video-renderer.${GROUP_CLASS} {
+    position:relative !important; padding-top:40px !important; box-sizing:border-box;
+  }
+  ytd-playlist-video-renderer.${GROUP_CLASS}::before {
+    content:attr(data-ytwash-heading); position:absolute; top:8px; left:8px; right:8px;
+    display:block; height:24px; line-height:24px; overflow:hidden; text-overflow:ellipsis;
+    white-space:nowrap; pointer-events:none; font-family:Arial,sans-serif;
+    font-size:14px; font-weight:600; color:var(--yt-spec-text-primary,#0f0f0f);
+  }`;
+
 (document.head || document.documentElement).append(style);
 
 function restoreRows(): void {
@@ -114,7 +123,7 @@ function groupRows(): void {
     }
     if (counts.get(entry.key) === 1 && !restHeadingShown) {
       row.classList.add(GROUP_CLASS);
-      row.dataset.ytwashHeading = 'Rest';
+      row.dataset.ytwashHeading = 'Everything else';
       restHeadingShown = true;
     }
     previous = entry.key;

@@ -50,10 +50,13 @@ jobs:
           test -s dist/manifest.json
           test -s dist/background.js
           test -s dist/content.js
+          test -s dist-firefox/manifest.json
       - name: Create distributable archive and checksum
         run: |
           mkdir -p release
           (cd dist && zip -q -r "../release/ytwash-${RELEASE_TAG}.zip" .)
+          (cd dist-firefox && zip -q -r "../release/ytwash-${RELEASE_TAG}-firefox.zip" .)
+          (cd release && sha256sum "ytwash-${RELEASE_TAG}-firefox.zip" > "ytwash-${RELEASE_TAG}-firefox.sha256")
           (cd release && sha256sum "ytwash-${RELEASE_TAG}.zip" > "ytwash-${RELEASE_TAG}.sha256")
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2

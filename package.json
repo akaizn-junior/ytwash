@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "vite build",
+    "build": "vite build && node scripts/browser-bundles.mjs",
     "dev": "vite build --watch",
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",

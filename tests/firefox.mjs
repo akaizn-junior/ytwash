@@ -10,7 +10,7 @@ import firefox from 'selenium-webdriver/firefox.js';
 const first = 'abcdefghijk', second = 'lmnopqrstuv';
 const temp = mkdtempSync(join(tmpdir(), 'ytwash-firefox-'));
 const bundle = join(temp, 'extension');
-cpSync(resolve('dist'), bundle, { recursive: true });
+cpSync(resolve('dist-firefox'), bundle, { recursive: true });
 const manifestPath = join(bundle, 'manifest.json');
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 // Test-only origin: never written to dist or the production manifest.
