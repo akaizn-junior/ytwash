@@ -1,5 +1,8 @@
 name: Build once and test browsers
 on: [push, pull_request]
+concurrency:
+  group: browser-tests-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   cross-browser:
     runs-on: ubuntu-latest
@@ -8,20 +11,35 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Cache npm packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('package.json') }}
+          restore-keys: npm-${{ runner.os }}-
       - name: Install dependencies once
-        run: npm install
+        run: npm install --prefer-offline --no-audit --no-fund
       - name: Typecheck once
         run: npm run typecheck
       - name: Build extension once
         run: npm run build
+      - name: Cache Chromium download
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package.json') }}
       - name: Install browser test dependencies
         run: npx playwright install --with-deps chromium
       - uses: browser-actions/setup-firefox@v1
         with:
           firefox-version: latest
       - uses: browser-actions/setup-geckodriver@latest
-      - name: Install WebM generator
-        run: sudo apt-get update -qq && sudo apt-get install -y ffmpeg
+      - name: Ensure WebM generator exists
+        run: |
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y ffmpeg
+          fi
       - name: Generate one shared WebM fixture
         run: |
           mkdir -p tests/fixtures
