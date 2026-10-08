@@ -99,6 +99,7 @@ function groupRows(): void {
   const counts = new Map<string, number>();
   for (const entry of entries) counts.set(entry.key, (counts.get(entry.key) || 0) + 1);
   let previous = '';
+  let restHeadingShown = false;
   ordered.forEach((entry, index) => {
     const row = entry.element;
     if (!rowStyles.has(row)) rowStyles.set(row, row.style.cssText);
@@ -110,6 +111,11 @@ function groupRows(): void {
     if (entry.key !== previous && counts.get(entry.key)! > 1) {
       row.classList.add(GROUP_CLASS);
       row.dataset.ytwashHeading = entry.creator + ' · ' + counts.get(entry.key) + ' videos';
+    }
+    if (counts.get(entry.key) === 1 && !restHeadingShown) {
+      row.classList.add(GROUP_CLASS);
+      row.dataset.ytwashHeading = 'Rest';
+      restHeadingShown = true;
     }
     previous = entry.key;
   });

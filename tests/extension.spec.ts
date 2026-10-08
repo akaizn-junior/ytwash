@@ -47,7 +47,7 @@ test('unpacked extension loads and groups Watch Later videos on request', async 
   }
 });
 
-test('single-video creators are not grouped and native rows remain intact', async () => {
+test('single-video creators appear under Rest and native rows remain intact', async () => {
   const context = await chromium.launchPersistentContext('', {
     channel: 'chromium', headless: true,
     args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`]
@@ -67,8 +67,9 @@ test('single-video creators are not grouped and native rows remain intact', asyn
     const settings = await context.newPage();
     await settings.goto(new URL('options.html', worker.url()).href);
     await settings.locator('[data-key="ytwash:group-by-creator"]').check();
-    await expect(page.locator('.ytwash-native-group')).toHaveCount(1, { timeout: 15000 });
-    await expect(page.locator('.ytwash-native-group')).toHaveAttribute('data-ytwash-heading', 'Creator A · 2 videos');
+    await expect(page.locator('.ytwash-native-group')).toHaveCount(2, { timeout: 15000 });
+    await expect(page.locator('.ytwash-native-group').first()).toHaveAttribute('data-ytwash-heading', 'Creator A · 2 videos');
+    await expect(page.locator('.ytwash-native-group').last()).toHaveAttribute('data-ytwash-heading', 'Rest');
     await expect(page.locator('ytd-playlist-video-renderer')).toHaveCount(3);
     await expect(page.locator('ytd-playlist-video-renderer').last()).toContainText('Three');
     await expect(page.locator('.ytwash-grouped-row')).toHaveCount(3);
