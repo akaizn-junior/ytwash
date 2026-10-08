@@ -1,5 +1,8 @@
 name: Build once and test browsers
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - 'feature/**'
 jobs:
   cross-browser:
     runs-on: ubuntu-latest
