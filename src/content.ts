@@ -1,3 +1,4 @@
+import { startCreatorPlayback } from './playback';
 import './cleanup';
 import './timestamps';
 
@@ -122,6 +123,7 @@ function render(): void {
       shown+=visible.length;
       const details=element('details');details.dataset.creator=key;if(expanded.has(key))details.open=true;
       const summary=element('summary',undefined,items[0].creator+' · '+items.length+' video'+(items.length===1?'':'s'));details.append(summary);
+      const play=element('button',undefined,'Play this creator');play.type='button';play.setAttribute('aria-label','Play all indexed Watch Later videos from '+items[0].creator);play.addEventListener('click',()=>{const ids=items.sort((a,b)=>a.order-b.order).map(v=>v.id);if(!startCreatorPlayback(items[0].creator,ids))window.alert('YTWash could not start creator playback.');});details.append(play);
       for(const video of visible.sort((a,b)=>a.order-b.order)){
         const row=element('div','yw-item');
         const a=element('a');a.href=video.href;a.textContent=video.title;
