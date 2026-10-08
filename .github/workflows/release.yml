@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - 'v[0-9]*'
+    branches:
+      - 'release/[0-9]*'
 
 permissions:
   contents: read
@@ -11,6 +13,8 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v{0}', github.ref_name) }}
     permissions:
       contents: write
     steps:
@@ -21,8 +25,6 @@ jobs:
       - name: Install dependencies
         run: npm install
       - name: Validate version matches tag
-        env:
-          RELEASE_TAG: ${{ github.ref_name }}
         run: |
           node -e '
             const pkg = require("./package.json");
@@ -43,8 +45,6 @@ jobs:
           test -s dist/background.js
           test -s dist/content.js
       - name: Create distributable archive and checksum
-        env:
-          RELEASE_TAG: ${{ github.ref_name }}
         run: |
           mkdir -p release
           (cd dist && zip -q -r "../release/ytwash-${RELEASE_TAG}.zip" .)
@@ -52,6 +52,8 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          target_commitish: ${{ github.sha }}
           generate_release_notes: true
           prerelease: true
           files: |
