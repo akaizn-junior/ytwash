@@ -1,16 +1,11 @@
 import { startCreatorPlayback } from './playback';
 import './cleanup';
 import './timestamps';
+import { preferences, preferencesReady, preferenceKeys } from './preferences';
 
-/**
- * Leave YouTube's Watch Later list untouched by default. Group only when the
- * user explicitly turns grouping on, and apply that grouping as a one-shot DOM
- * operation so YouTube's frequent playlist mutations cannot repeatedly move rows.
- */
+/** Apply the stored grouping preference without adding page controls. */
 const VIDEO_SELECTOR = 'ytd-playlist-video-renderer';
 const GROUP_CLASS = 'ytwash-native-group';
-const CONTROL_CLASS = 'ytwash-grouping-control';
-const CONTROL_ID = 'ytwash-grouping-toggle';
 type Entry = { element: HTMLElement; id: string; creator: string; key: string; index: number };
 
 const originalOrder = new Map<HTMLElement, number>();
@@ -20,6 +15,7 @@ let scheduled: number | undefined;
 let rendering = false;
 let groupingEnabled = false;
 let lastPage = '';
+let groupedSignature = '';
 
 function onWatchLater(): boolean {
   return location.pathname === '/playlist' && new URLSearchParams(location.search).get('list') === 'WL';
@@ -47,46 +43,21 @@ function playlistParent(): HTMLElement | null {
   return row.closest<HTMLElement>('.' + GROUP_CLASS)?.parentElement || row.parentElement;
 }
 
-function setControlState(button: HTMLButtonElement): void {
-  button.setAttribute('aria-pressed', String(groupingEnabled));
-  button.textContent = groupingEnabled ? 'Grouping on · Undo' : 'Group by creator';
-}
-
-function ensureControl(): void {
-  if (!onWatchLater()) {
-    document.querySelector('.' + CONTROL_CLASS)?.remove();
+function reconcileGrouping(): void {
+  if (!onWatchLater()) return;
+  if (!preferences.groupByCreator) {
+    if (groupingEnabled) restoreRows();
+    groupingEnabled = false;
+    groupedSignature = '';
     return;
   }
-  const parent = playlistParent();
-  if (!parent) return;
-
-  let wrapper = document.querySelector<HTMLElement>('.' + CONTROL_CLASS);
-  if (wrapper?.parentElement !== parent) {
-    wrapper?.remove();
-    wrapper = document.createElement('div');
-    wrapper.className = CONTROL_CLASS;
-    wrapper.style.cssText = 'box-sizing:border-box;width:100%;display:flex;justify-content:flex-end;padding:8px 0';
-    const button = document.createElement('button');
-    button.id = CONTROL_ID;
-    button.type = 'button';
-    button.setAttribute('aria-label', 'Group Watch Later videos by creator');
-    button.style.cssText = 'font:inherit;color:var(--yt-spec-text-primary,#0f0f0f);background:var(--yt-spec-badge-chip-background,#f2f2f2);border:0;border-radius:18px;padding:8px 14px;cursor:pointer';
-    button.addEventListener('click', () => {
-      if (groupingEnabled) {
-        restoreRows();
-        groupingEnabled = false;
-        originalOrder.clear();
-        nextIndex = 0;
-      } else {
-        groupRows();
-      }
-      setControlState(button);
-    });
-    wrapper.append(button);
-    parent.insertBefore(wrapper, parent.firstChild);
-  }
-  const button = wrapper.querySelector<HTMLButtonElement>('#' + CONTROL_ID);
-  if (button) setControlState(button);
+  const signature = [...document.querySelectorAll<HTMLElement>(VIDEO_SELECTOR)]
+    .map(entryFor).filter((entry): entry is Entry => entry !== null)
+    .sort((a,b) => a.index - b.index).map(entry => entry.id + ':' + entry.key).join('|');
+  if (!signature || signature === groupedSignature) return;
+  if (groupingEnabled) restoreRows();
+  groupRows();
+  groupedSignature = signature;
 }
 
 function restoreRows(): void {
@@ -169,22 +140,21 @@ function resetForNavigation(): void {
   groupingEnabled = false;
   originalOrder.clear();
   nextIndex = 0;
-  document.querySelector('.' + CONTROL_CLASS)?.remove();
+  groupedSignature = '';
 }
 
 function scheduleControl(): void {
   if (scheduled !== undefined) clearTimeout(scheduled);
   scheduled = window.setTimeout(() => {
     scheduled = undefined;
-    ensureControl();
+    reconcileGrouping();
   }, 150);
 }
 
-// Observe YouTube only to place the control after its playlist renders. DOM
-// mutations never trigger grouping or move video rows.
+// Reconcile only when loaded entries change; our own row moves are disconnected.
 observer = new MutationObserver(mutations => {
   if (rendering || !onWatchLater()) return;
-  if (mutations.every(mutation => (mutation.target as Element).closest?.('.' + CONTROL_CLASS))) return;
+
   scheduleControl();
 });
 observer.observe(document.documentElement, { subtree: true, childList: true });
@@ -217,3 +187,8 @@ window.addEventListener('yt-navigate-finish', () => {
 
 lastPage = location.pathname + location.search;
 scheduleControl();
+
+void preferencesReady.then(scheduleControl);
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes[preferenceKeys.groupByCreator]) scheduleControl();
+});

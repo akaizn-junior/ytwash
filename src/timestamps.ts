@@ -68,9 +68,12 @@ async function saveCurrent(id: string, seconds: number): Promise<void> {
   } finally { saving = false; }
 }
 function decorateSave(): void {
-  const controls = new Set(preferences.enhancedSave && getId() ? saveControls() : []);
+  const controls = new Set(preferences.enhancedSave && getId() ? saveControls().map(control =>
+    control.querySelector<HTMLElement>('tp-yt-paper-item, [role="menuitem"], .yt-list-item-view-model__container, button') || control
+  ) : []);
   for (const [control, original] of saveLayouts) {
     if (controls.has(control)) continue;
+    control.querySelectorAll('.' + ICON_CLASS).forEach(icon => icon.remove());
     if (control.style.position === 'relative') control.style.setProperty('position', original.position, original.positionPriority);
     if (control.style.paddingRight === original.reservedPadding) control.style.setProperty('padding-right', original.padding, original.paddingPriority);
     saveLayouts.delete(control);
@@ -94,7 +97,7 @@ function decorateSave(): void {
     icon.setAttribute('viewBox', '0 0 24 24');
     icon.setAttribute('aria-hidden', 'true');
     // Out of flow: never becomes another grid cell or wraps in a flex row.
-    icon.style.cssText = `position:absolute!important;right:${inset}px!important;top:50%!important;transform:translateY(-50%)!important;width:16px!important;height:16px!important;fill:currentColor;pointer-events:none`;
+    icon.style.cssText = `position:absolute!important;right:${inset}px!important;top:50%!important;transform:translateY(-50%)!important;width:16px!important;height:16px!important;fill:#ff0033!important;pointer-events:none`;
     const title = document.createElementNS(icon.namespaceURI, 'title');
     title.textContent = 'YTWash: save to Watch Later at the current time';
     const path = document.createElementNS(icon.namespaceURI, 'path');
