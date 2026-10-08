@@ -16,4 +16,8 @@ Recreate PNG exports with `PLAYWRIGHT_BROWSERS_PATH=/path/to/browsers node scrip
 
 The painter’s brush uses simple original SVG paths with broad bristle cuts for clarity at small sizes.
 
-`brush-wordmark.svg`: white lowercase ytwash on an original red dry-brush paint stroke, transparent exterior; lettering outlined for portable SVG rendering. DejaVu font license retained in FONT-LICENSE.txt.
+`brush-wordmark.svg`: red lowercase ytwash on an original black dry-brush paint stroke, transparent exterior; lettering outlined for portable SVG rendering. DejaVu font license retained in FONT-LICENSE.txt.
+
+Favicon: `favicon.svg` uses a white painter’s brush on a red square tile, optimized for 16/32px. Exported SVG, PNG, ICO, and Apple touch assets are in `site/`; 16/32px extension icons use the same compact design.
+
+`brush-wordmark-white.svg` and `brush-wordmark-white.png`: white-on-black alternative. The red-on-black wordmark remains available; original generated red design is `brush-wordmark-original.png`.
