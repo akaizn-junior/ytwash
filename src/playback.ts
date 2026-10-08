@@ -1,4 +1,4 @@
-/** Session-only queue of videos for one creator, played using YouTube's native player. */
+/** Playback cursor backed by the persisted grouped playlist index. */
 import { preferences, preferencesReady, preferenceKeys } from './preferences';
 import { playlistId, readPlaylist, indexPlaylist, creatorOrder, type PlaylistEntry } from './playlists';
 const QUEUE_KEY = 'ytwash:creator-queue:v1';
@@ -22,9 +22,10 @@ async function hydrateNativePlaylist(): Promise<void> {
       const creator = row.querySelector<HTMLElement>('#byline, #channel-name, ytd-channel-name')?.textContent?.trim();
       if (entryId && /^[\w-]{11}$/.test(entryId) && creator) sidebar.push({ id: entryId, creator, key: creator.toLowerCase() });
     }
-    // Prefer current native sidebar rows over an older cached index.
-    const entries = sidebar.length ? sidebar : cached && Date.now() - cached.indexedAt < 86400000 ? cached.entries : [];
-    if (sidebar.length) indexPlaylist(list, sidebar);
+    // A sidebar may contain only a window of the playlist. Do not let it
+    // replace the complete order captured on the grouped playlist page.
+    const entries = cached?.entries.some(entry => entry.id === id) ? cached.entries : sidebar;
+    if (!cached && sidebar.length) indexPlaylist(list, sidebar);
     const ordered = creatorOrder(entries).map(entry => entry.id);
     const index = ordered.indexOf(id);
     if (location.href !== source || getQueue() || !preferences.groupByCreator || !preferences.groupPlayback || index < 0) return;
@@ -83,23 +84,48 @@ export function startCreatorPlayback(creator: string, ids: string[], originalUrl
 function videoId(): string | null {
   return location.pathname === '/watch' ? new URLSearchParams(location.search).get('v') : null;
 }
+async function refreshQueue(queue: CreatorQueue, id: string): Promise<CreatorQueue> {
+  if (!preferences.groupByCreator || !preferences.groupPlayback) return queue;
+  const cached = await readPlaylist(queue.creator);
+  const ids = cached ? [...new Set(creatorOrder(cached.entries).map(entry => entry.id))] : queue.ids;
+  const index = ids.indexOf(id);
+  const current = getQueue();
+  if (index < 0 || videoId() !== id || current?.creator !== queue.creator || current.ids[current.index] !== id) return queue;
+  const updated = { ...queue, ids, index };
+  saveQueue(updated);
+  return updated;
+}
+async function advance(direction: number): Promise<void> {
+  const initial = getQueue(), id = videoId();
+  if (!initial || !id || advancing) return;
+  advancing = true;
+  const queue = await refreshQueue(initial, id);
+  const active = getQueue();
+  if (videoId() !== id || !active || active.creator !== queue.creator || active.ids[active.index] !== id) { advancing = false; return; }
+  const next = queue.index + direction;
+  if (next < 0 || next >= queue.ids.length) { advancing = false; return; }
+  if (!saveQueue({ ...queue, index: next })) { stopCreatorPlayback(); return; }
+  await navigateToVideo(queue.ids[next]);
+}
 function ended(event: Event): void {
   const queue = getQueue(), id = videoId();
   if (!queue || !id || queue.ids[queue.index] !== id || advancing) return;
-  // Own this queued transition before YouTube's native autoplay handlers run.
-  // Cleanup gets the same completion signal without competing for navigation.
   event.stopImmediatePropagation();
   attached?.dispatchEvent(new Event('ytwash-queued-ended'));
-  if (queue.index + 1 === queue.ids.length) { stopCreatorPlayback(); return; }
-  advancing = true;
-  window.setTimeout(() => {
-    const active = getQueue();
-    if (!active || videoId() !== id || active.ids[active.index] !== id) { advancing = false; return; }
-    const next = active.index + 1;
-    if (!saveQueue({ ...active, index: next })) { stopCreatorPlayback(); return; }
-    void navigateToVideo(active.ids[next]);
-  }, 1800);
+  void advance(1);
 }
+// Capture native player controls before YouTube navigates in native index order.
+document.addEventListener('click', event => {
+  if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey ||
+      event.shiftKey || event.altKey || !(event.target instanceof Element) ||
+      !preferences.groupByCreator || !preferences.groupPlayback) return;
+  const control = event.target.closest('.ytp-next-button, .ytp-prev-button');
+  if (!control || !getQueue()) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  void advance(control.matches('.ytp-prev-button') ? -1 : 1);
+}, true);
+
 function reconcilePlayback(): void {
   let queue = getQueue();
   const id = videoId(), path = location.pathname + location.search;
@@ -122,7 +148,10 @@ window.addEventListener('popstate',reconcilePlayback);
 window.setInterval(reconcilePlayback,1500);
 reconcilePlayback();
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area !== 'local' || ![preferenceKeys.groupByCreator, preferenceKeys.groupPlayback].some(key => changes[key])) return;
+  if (area !== 'local') return;
+  const queue = getQueue(), id = videoId();
+  if (queue && id && changes['ytwash:playlist:' + queue.creator]) void refreshQueue(queue, id);
+  if (![preferenceKeys.groupByCreator, preferenceKeys.groupPlayback].some(key => changes[key])) return;
   stopCreatorPlayback();
   reconcilePlayback();
 });

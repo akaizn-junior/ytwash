@@ -1,3 +1,4 @@
+import { readPlaylist, indexPlaylist } from './playlists';
 import { preferences, preferencesReady } from './preferences';
 import { watchId, saveControls, waitForWatchLater, checked, closeSaveChooser } from './native-save';
 /** Persist explicit resume points locally; never write to YouTube's private APIs. */
@@ -64,6 +65,18 @@ async function saveCurrent(id: string, seconds: number): Promise<void> {
       }
     }
     if (watchId() !== id || checked(checkbox) !== true) return;
+    // Confirmed additions immediately update the stored Watch Later order.
+    const channel = document.querySelector<HTMLAnchorElement>('ytd-watch-metadata ytd-channel-name a[href], #owner #channel-name a[href]');
+    const creator = channel?.textContent?.trim();
+    if (creator) {
+      const cached = await readPlaylist('WL');
+      if (!cached?.entries.some(entry => entry.id === id)) {
+        const path = channel!.getAttribute('href')?.split('?')[0] || '';
+        const key = cached?.entries.find(entry => entry.creator === creator)?.key ||
+          (path.startsWith('/channel/') ? path : path.startsWith('/@') ? path.toLowerCase() : 'name:' + creator.toLowerCase());
+        indexPlaylist('WL', [{ id, creator, key }, ...(cached?.entries || [])]);
+      }
+    }
     closeSaveChooser();
   } finally { saving = false; }
 }
