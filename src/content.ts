@@ -1,5 +1,6 @@
 import { startCreatorPlayback } from './playback';
 import './cleanup';
+import './sidebar';
 import './timestamps';
 import { preferences, preferencesReady, preferenceKeys } from './preferences';
 import { playlistId, indexPlaylist, creatorOrder } from './playlists';
@@ -163,13 +164,13 @@ document.addEventListener('click', event => {
       !(event.target instanceof Element)) return;
   const play = event.target.closest<HTMLButtonElement>('button');
   if (play && preferences.groupByCreator && preferences.groupPlayback &&
-      play.closest('ytd-playlist-header-renderer, ytd-playlist-header-view-model, ytd-playlist-sidebar-primary-info-renderer') &&
+      play.closest('ytd-playlist-header-renderer, ytd-playlist-header-view-model, ytd-playlist-sidebar-primary-info-renderer, ytd-playlist-header-renderer yt-button-shape') &&
       /^(play(?: all)?|reproduzir(?: tudo)?|tocar(?: tudo)?)(\s|$)/i.test(play.getAttribute('aria-label') || play.textContent || '')) {
     const entries = [...document.querySelectorAll<HTMLElement>(VIDEO_SELECTOR)]
       .map(entryFor).filter((entry): entry is Entry => entry !== null).sort((a,b) => a.index - b.index);
     if (startCreatorPlayback(playlistId()!, creatorOrder(entries).map(entry => entry.id))) {
       event.preventDefault();
-      event.stopPropagation();
+      event.stopImmediatePropagation();
     }
     return;
   }
@@ -182,7 +183,7 @@ document.addEventListener('click', event => {
     const url = new URL(link.href);
     if (!preferences.groupByCreator || !preferences.groupPlayback || url.pathname !== '/watch' ||
         url.searchParams.get('list') !== playlistId() ||
-        !link.closest('ytd-playlist-header-renderer, ytd-playlist-header-view-model, ytd-playlist-sidebar-primary-info-renderer')) return;
+        !link.closest('ytd-playlist-header-renderer, ytd-playlist-header-view-model, ytd-playlist-sidebar-primary-info-renderer, ytd-playlist-header-renderer yt-button-shape')) return;
     const entries = [...document.querySelectorAll<HTMLElement>(VIDEO_SELECTOR)]
       .map(entryFor).filter((entry): entry is Entry => entry !== null).sort((a,b) => a.index - b.index);
     const ids = creatorOrder(entries).map(entry => entry.id);
@@ -193,7 +194,7 @@ document.addEventListener('click', event => {
     if (originalId !== ids[0]) ['t', 'start', 'time_continue'].forEach(key => url.searchParams.delete(key));
     if (startCreatorPlayback(playlistId()!, ids, url.href)) {
       event.preventDefault();
-      event.stopPropagation();
+      event.stopImmediatePropagation();
     }
     return;
   }

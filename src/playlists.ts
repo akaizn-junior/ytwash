@@ -1,6 +1,6 @@
 /** Local indexes of visible native playlist rows, isolated by playlist ID. */
 export type PlaylistEntry = { id: string; creator: string; key: string };
-export type PlaylistIndex = { entries: PlaylistEntry[]; indexedAt: number };
+export type PlaylistIndex = { entries: PlaylistEntry[]; order?: string[]; indexedAt: number };
 export function creatorOrder<T extends PlaylistEntry>(entries: T[]): T[] {
   const groups = new Map<string, T[]>();
   for (const entry of entries) groups.set(entry.key, [...(groups.get(entry.key) || []), entry]);
@@ -19,7 +19,7 @@ export function indexPlaylist(id: string, entries: PlaylistEntry[]): void {
   const signature = JSON.stringify(bounded);
   if (!bounded.length || indexedSignatures.get(id) === signature) return;
   indexedSignatures.set(id, signature);
-  chrome.storage.local.set({ [PREFIX + id]: { entries: bounded, indexedAt: Date.now() } }, () => {
+  chrome.storage.local.set({ [PREFIX + id]: { entries: bounded, order: creatorOrder(bounded).map(entry => entry.id), indexedAt: Date.now() } }, () => {
     if (chrome.runtime.lastError) {
       indexedSignatures.delete(id);
       console.warn('YTWash playlist index could not be saved.');
