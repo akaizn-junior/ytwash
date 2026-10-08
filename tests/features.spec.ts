@@ -190,3 +190,72 @@ test('overflow menu Save receives one lightning icon and saves to Watch Later', 
     await expect(page.locator('#fake-picker input')).toBeChecked();
   } finally { await context.close(); }
 });
+
+test('Watch Later opens saved positions using YouTube timestamp URLs and respects explicit times', async () => {
+  const { context, page } = await fixture();
+  try {
+    await page.goto('https://www.youtube.com/playlist?list=WL');
+    const options = await openOptions(context);
+    await options.evaluate(() => chrome.storage.local.set({
+      'ytwash:resume:abcdefghijk': { seconds: 35, savedAt: Date.now() },
+      'ytwash:resume:lmnopqrstuv': { seconds: 45, savedAt: Date.now() },
+    }));
+    await page.locator('a#video-title').first().click();
+    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + FIRST + '&t=35s');
+    await page.locator('video').evaluate((v: HTMLVideoElement) => v.dispatchEvent(new Event('ended')));
+    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + SECOND + '&t=45s', { timeout: 12000 });
+    await page.goto('https://www.youtube.com/playlist?list=WL');
+    await page.locator('a#video-title').first().evaluate((a: HTMLAnchorElement) => { a.href += '&t=10s'; });
+    await page.locator('a#video-title').first().click();
+    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + FIRST + '&t=10s');
+    await options.locator('[data-key="ytwash:resume-enabled"]').uncheck();
+    await expect(options.locator('#status')).toHaveText('Preferences saved.');
+    await page.goto('https://www.youtube.com/playlist?list=WL');
+    await page.locator('a#video-title').first().click();
+    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + FIRST);
+  } finally { await context.close(); }
+});
+
+test('resume waits for replacement metadata when YouTube reuses the video element', async () => {
+  const { context, page } = await fixture();
+  try {
+    await page.goto('https://www.youtube.com/watch?v=' + FIRST);
+    const options = await openOptions(context);
+    await options.evaluate(() => chrome.storage.local.set({
+      'ytwash:resume:lmnopqrstuv': { seconds: 35, savedAt: Date.now() },
+    }));
+    await expect.poll(() => page.locator('video').evaluate((v: HTMLVideoElement) => v.readyState)).toBeGreaterThan(0);
+    await page.evaluate(() => {
+      history.pushState({}, '', '/watch?v=lmnopqrstuv');
+      window.dispatchEvent(new Event('yt-navigate-finish'));
+    });
+    await expect.poll(() => page.locator('video').evaluate((v: HTMLVideoElement) => v.currentTime)).toBe(35);
+    // YouTube replaces the source after the navigation event, resetting time.
+    await page.locator('video').evaluate((v: HTMLVideoElement) => v.load());
+    await expect.poll(() => page.locator('video').evaluate((v: HTMLVideoElement) => v.currentTime)).toBe(35);
+  } finally { await context.close(); }
+});
+
+test('plain-text Save keeps its lightning icon and persists time without a recognizable chooser', async () => {
+  const { context, page } = await fixture();
+  try {
+    await page.goto('https://www.youtube.com/watch?v=' + FIRST);
+    const options = await openOptions(context);
+    await page.locator('#native-save').evaluate(button => {
+      const plain = document.createElement('button');
+      plain.id = 'plain-save';
+      plain.textContent = 'Save';
+      button.replaceWith(plain);
+    });
+    await expect(page.locator('#plain-save .ytwash-save-lightning')).toHaveCount(1);
+    await expect.poll(() => page.locator('video').evaluate((v: HTMLVideoElement) => v.readyState)).toBeGreaterThan(0);
+    await page.locator('video').evaluate((v: HTMLVideoElement) => { v.currentTime = 25; });
+    await expect.poll(() => page.locator('video').evaluate((v: HTMLVideoElement) => v.currentTime)).toBe(25);
+    await page.locator('#plain-save').click();
+    await expect.poll(() => options.evaluate(async () =>
+      (await chrome.storage.local.get('ytwash:resume:abcdefghijk'))['ytwash:resume:abcdefghijk']?.seconds
+    )).toBe(25);
+    await expect(page.locator('#plain-save .ytwash-save-lightning')).toHaveCount(1);
+    await expect(page.locator('#fake-picker')).toHaveCount(0);
+  } finally { await context.close(); }
+});

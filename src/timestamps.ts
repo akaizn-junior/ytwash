@@ -9,6 +9,7 @@ let currentId = '';
 let activeVideo: HTMLVideoElement | null = null;
 let resumeApplied = false;
 let lastUrl = '';
+let resumeListeners: AbortController | null = null;
 
 function getId(): string | null {
   if (location.pathname !== '/watch') return null;
@@ -42,6 +43,10 @@ async function saveCurrent(id: string, seconds: number): Promise<void> {
   try {
     await preferencesReady;
     if (!preferences.enhancedSave || watchId() !== id) return;
+    // Persist the user's explicit Save action even when YouTube's chooser
+    // changes markup or cannot expose a confirmed Watch Later state.
+    if (!await store(id, seconds)) return;
+    if (watchId() !== id) return;
     // Let the trusted native Save click open its playlist chooser normally.
     const checkbox = await waitForWatchLater(id);
     if (!checkbox || watchId() !== id || !preferences.enhancedSave) return;
@@ -49,14 +54,14 @@ async function saveCurrent(id: string, seconds: number): Promise<void> {
     if (membership === null) return;
     if (!membership) {
       checkbox.click();
-      // Require confirmation from the native control before storing a timestamp.
+      // Confirm the native control changed before dismissing its chooser.
       for (let attempt = 0; attempt < 20 && watchId() === id; attempt++) {
         if (checked(checkbox) === true) break;
         await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
     if (watchId() !== id || checked(checkbox) !== true) return;
-    if (await store(id, seconds) && watchId() === id) closeSaveChooser();
+    closeSaveChooser();
   } finally { saving = false; }
 }
 function decorateSave(): void {
@@ -109,12 +114,20 @@ async function applyResume(id: string, video: HTMLVideoElement): Promise<void> {
     video.currentTime = saved.seconds;
     resumeApplied = true;
   };
+  // YouTube reuses its video element during client-side navigation. Metadata
+  // for the previous video can still be present when navigation finishes.
+  const controller = resumeListeners;
+  video.addEventListener('loadedmetadata', () => {
+    if (getId() !== id || activeVideo !== video || hasExplicitTime()) return;
+    resumeApplied = false;
+    seek();
+  }, { signal: controller?.signal });
   if (video.readyState >= 1) seek();
-  else video.addEventListener('loadedmetadata', seek, { once: true });
 }
 async function mount(): Promise<void> {
   const id = getId();
   if (!id) {
+    resumeListeners?.abort();
     currentId = '';
     activeVideo = null;
     return;
@@ -123,6 +136,8 @@ async function mount(): Promise<void> {
   if (!video) return;
   const changed = currentId !== id || activeVideo !== video;
   if (changed) {
+    resumeListeners?.abort();
+    resumeListeners = new AbortController();
     currentId = id; activeVideo = video; resumeApplied = false;
   }
   if (changed) void applyResume(id, video);

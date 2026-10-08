@@ -203,7 +203,7 @@ document.addEventListener('click', event => {
   const selected = ordered.findIndex(item => item.element === row);
   if (selected < 0) return;
   const queue = ordered.slice(selected).map(item => item.id);
-  if (queue.length > 0 && startCreatorPlayback('Watch Later', queue)) event.preventDefault();
+  if (queue.length > 0 && startCreatorPlayback('Watch Later', queue, link.href)) event.preventDefault();
 }, true);
 
 window.addEventListener('yt-navigate-finish', () => {

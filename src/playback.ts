@@ -1,4 +1,5 @@
 /** Session-only queue of videos for one creator, played using YouTube's native player. */
+import { preferences, preferencesReady } from './preferences';
 const QUEUE_KEY = 'ytwash:creator-queue:v1';
 type CreatorQueue = { creator: string; ids: string[]; index: number };
 let attached: HTMLVideoElement | null = null;
@@ -27,10 +28,27 @@ export function stopCreatorPlayback(): void {
   document.getElementById('ytwash-playback-control')?.remove();
   advancing = false;
 }
-export function startCreatorPlayback(creator: string, ids: string[]): boolean {
+async function navigateToVideo(id: string, originalUrl?: string): Promise<void> {
+  const sourceLocation = location.href;
+  const url = new URL(originalUrl || '/watch?v=' + encodeURIComponent(id), location.origin);
+  await preferencesReady;
+  if (preferences.resume && !['t', 'start', 'time_continue'].some(key => url.searchParams.has(key))) {
+    const saved = await new Promise<number | null>(resolve => {
+      chrome.storage.local.get('ytwash:resume:' + id, data => {
+        const seconds = data['ytwash:resume:' + id]?.seconds;
+        resolve(!chrome.runtime.lastError && Number.isFinite(seconds) && seconds >= 1 ? seconds : null);
+      });
+    });
+    if (preferences.resume && saved !== null) url.searchParams.set('t', Math.floor(saved) + 's');
+  }
+  const queue = getQueue();
+  if (location.href !== sourceLocation || !queue || queue.ids[queue.index] !== id) return;
+  location.assign(url.href);
+}
+export function startCreatorPlayback(creator: string, ids: string[], originalUrl?: string): boolean {
   const unique = [...new Set(ids)].filter(id => /^[\w-]{11}$/.test(id));
   if (!unique.length || !saveQueue({ creator, ids: unique, index: 0 })) return false;
-  location.assign('/watch?v=' + encodeURIComponent(unique[0]));
+  void navigateToVideo(unique[0], originalUrl);
   return true;
 }
 function videoId(): string | null {
@@ -46,7 +64,7 @@ function ended(): void {
     if (!active || videoId() !== id || active.ids[active.index] !== id) { advancing = false; return; }
     const next = active.index + 1;
     if (!saveQueue({ ...active, index: next })) { stopCreatorPlayback(); return; }
-    location.assign('/watch?v=' + encodeURIComponent(active.ids[next]));
+    void navigateToVideo(active.ids[next]);
   }, 1800);
 }
 function reconcilePlayback(): void {
