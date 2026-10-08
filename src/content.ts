@@ -1,3 +1,4 @@
+import { startCreatorPlayback } from './playback';
 import './cleanup';
 import './timestamps';
 
@@ -57,6 +58,18 @@ function makeGroup(creator: string, key: string, entries: Entry[]): HTMLElement 
   box.className = GROUP_CLASS;
   box.dataset.creator = key;
   box.setAttribute('aria-label', creator + ' · ' + entries.length + ' videos');
+  // Native video links are the only playback entry point; no extra buttons.
+  box.addEventListener('click', event => {
+    if (event.defaultPrevented || !(event.target instanceof Element)) return;
+    const link = event.target.closest<HTMLAnchorElement>('a#video-title, ytd-thumbnail a[href*="/watch"], a#thumbnail[href*="/watch"]');
+    if (!link || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const row = link.closest<HTMLElement>(VIDEO_SELECTOR);
+    const selected = entries.findIndex(entry => entry.element === row);
+    if (selected < 0) return;
+    // Preserve the selected starting video, and play remaining creator videos in order.
+    const queue = entries.slice(selected).map(entry => entry.id);
+    if (startCreatorPlayback(creator, queue)) event.preventDefault();
+  });
   box.style.cssText = 'box-sizing:border-box;width:100%;margin:4px 0 10px;padding:4px 6px;border:0;background:transparent';
   return box;
 }
