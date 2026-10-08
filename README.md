@@ -6,7 +6,7 @@
 <p align="center"><strong>watch it. clear it.</strong></p>
 <p align="center">Save your place. Watch playlists by creator. Clear finished videos automatically.</p>
 <p align="center">
-  <a href="https://github.com/akaizn-junior/ytwash/releases/tag/v0.1.0-beta.1">Download the beta</a> ·
+  <a href="https://github.com/akaizn-junior/ytwash/releases/tag/v0.2.0-beta">Download the beta</a> ·
   <a href="https://akaizn-junior.github.io/ytwash/">Website</a> ·
   <a href="https://github.com/akaizn-junior/ytwash/issues">Get help</a>
 </p>
@@ -67,9 +67,19 @@ Open Options by clicking the YTWash toolbar icon, or through your browser’s ex
 | Preference | What it does |
 | --- | --- |
 | **Group playlists by creator** | Groups playlist and sidebar videos, and uses that order for playback. |
+| **Remind me about saved videos** | Periodically sends a browser notification for one unwatched video. Off by default. |
+| **Reminder interval** | Set any whole number from 1 to 365 days; defaults to weekly. |
 | **Remove completed videos from playlists** | Removes finished videos from the current playlist and clears their saved positions. |
 
 Save, resume, and creator-order playback are built-in features, not separate switches.
+
+### Automatic reminders without an account
+
+Enable reminders in Options and set the interval. Click **Save for later · YTWash** on a video to add it to the local queue without signing into YouTube. Native Save also queues the video locally, even if YouTube cannot confirm Watch Later membership. Options lists local saves and lets you remove them without changing YouTube playlists.
+
+Reminders rotate through local saves and previously indexed Watch Later videos. Click a notification to watch. Videos that finish after at least five seconds of playback stop being suggested, independently of playlist cleanup. Saving again makes them eligible again. Empty queues produce no notification.
+
+The first reminder arrives after the selected interval. Changing the interval restarts the countdown; restarting the browser preserves it or recreates a missing alarm. Notifications require a running browser and permission in system settings; reminders can be delayed while the browser is closed or the device sleeps. YTWash only knows Watch Later entries it has observed, so changes made elsewhere may not be reflected until you load that playlist again.
 
 ## Your settings and privacy
 
@@ -86,10 +96,11 @@ Settings, saved positions, and playlist order stay in your browser profile. They
 **A finished video stays in the playlist?** Check that cleanup is enabled and that you can edit the playlist. If the native dialog remains open or requires a manual click, include that detail in your bug report.
 
 
-YTWash is an experimental alpha distributed directly through GitHub. Automated Chromium and Firefox tests use simulated YouTube pages; signed-in YouTube behavior still needs verification, and interface changes can affect features.
+YTWash is an experimental beta distributed directly through GitHub. Automated Chromium and Firefox tests use simulated YouTube pages; signed-in YouTube behavior still needs verification, and interface changes can affect features.
 
 If something stops working, reload the extension and refresh YouTube. [Report a problem](https://github.com/akaizn-junior/ytwash/issues) with your browser, release version, and what happened. Do not include private account details.
 
 [Project site](https://akaizn-junior.github.io/ytwash/) · [MIT license](LICENSE)
 
 YTWash is not affiliated with or endorsed by YouTube or Google.
+

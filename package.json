@@ -1,6 +1,6 @@
 {
   "name": "ytwash",
-  "version": "0.1.0",
+  "version": "0.2.0-beta",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,7 +8,8 @@
     "dev": "vite build --watch",
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
-    "test:firefox": "node tests/firefox.mjs"
+    "test:firefox": "node tests/firefox.mjs",
+    "test:reminders": "node --test tests/reminders.test.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0",

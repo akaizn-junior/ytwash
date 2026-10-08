@@ -14,7 +14,7 @@ function controlLabel(node: HTMLElement): string {
 export function saveControls(): HTMLElement[] {
   return [...document.querySelectorAll<HTMLElement>(
     'ytd-watch-metadata button, ytd-menu-service-item-renderer, ytd-menu-navigation-item-renderer, yt-list-item-view-model'
-  )].filter(node => node.getClientRects().length > 0 && saveLabel.test(controlLabel(node)));
+  )].filter(node => node.id !== 'ytwash-save-for-later' && node.getClientRects().length > 0 && saveLabel.test(controlLabel(node)));
 }
 export function watchLaterCheckbox(): HTMLElement | null { return playlistCheckbox('WL'); }
 function playlistCheckbox(list: string): HTMLElement | null {
@@ -87,3 +87,4 @@ export function closeSaveChooser(list = 'WL'): void {
   const close = dialog?.querySelector<HTMLElement>('button[aria-label="Close"], button[aria-label="Fechar"], #close-button button');
   close?.click();
 }
+

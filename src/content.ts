@@ -2,6 +2,7 @@ import { startCreatorPlayback } from './playback';
 import './cleanup';
 import './sidebar';
 import './timestamps';
+import './reminder-queue';
 import { preferences, preferencesReady, preferenceKeys } from './preferences';
 import { playlistId, indexPlaylist, creatorOrder } from './playlists';
 
@@ -225,3 +226,4 @@ void preferencesReady.then(scheduleControl);
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && changes[preferenceKeys.groupByCreator]) scheduleControl();
 });
+

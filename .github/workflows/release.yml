@@ -36,11 +36,14 @@ jobs:
             const pkg = require("./package.json");
             const manifest = require("./public/manifest.json");
             const tag = process.env.RELEASE_TAG;
-            if (!new RegExp("^v" + pkg.version.replaceAll(".", "\\.") + "(?:-(?:alpha|beta)\\.[0-9]+)?$").test(tag) || pkg.version !== manifest.version) {
+            const numeric = pkg.version.replace(/-(alpha|beta)$/, "");
+            if (tag !== "v" + pkg.version || numeric !== manifest.version || manifest.version_name !== pkg.version) {
               console.error("Tag, package.json, and extension manifest versions must match.");
               process.exit(1);
             }
           '
+      - name: Test reminder scheduling
+        run: npm run test:reminders
       - name: Typecheck
         run: npm run typecheck
       - name: Build once
@@ -71,3 +74,4 @@ jobs:
           files: |
             release/ytwash-*.zip
             release/ytwash-*.sha256
+
