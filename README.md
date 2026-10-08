@@ -31,7 +31,7 @@ Enable **Group playlists by creator** in YTWash Options. Loaded playlist rows gr
 
 ### Play videos in display order
 
-Click a video's native YouTube title or thumbnail in any playlist. YTWash plays the remaining indexed videos in their displayed order. The queue lasts for the current browsing session.
+Click a video's native YouTube title or thumbnail in any playlist. YTWash plays the remaining indexed videos in their displayed order. With grouping and **Use creator order for playlist playback** enabled in Options, native Play/Play all starts follow the creator groups too. Direct playlist starts use the current native sidebar or a recent local index, continuing from the selected video. The queue lasts for the current browsing session.
 
 ### Save to Watch Later at the current time
 
@@ -44,6 +44,7 @@ The next time you open that video in the same browser profile, YTWash resumes fr
 Click YTWash’s toolbar icon, or open its **Options** from your browser’s extension manager (`chrome://extensions`, `edge://extensions`, or Firefox’s `about:addons`). Preferences apply to open YouTube tabs and stay local to this browser:
 
 - **Save to Watch Later at the current time** (on by default). Turn it off to restore YouTube’s regular Save chooser.
+- **Use creator order for playlist playback** (on by default). Applies when creator grouping is enabled. Turn it off to leave native playlist startup to YouTube.
 - **Resume saved videos automatically** (on by default).
 - **Remove completed videos from Watch Later** (off by default). After natural playback ends and at least five seconds of playback have been detected, YTWash attempts removal using YouTube’s controls only when Watch Later membership is confirmed. It does not close the tab.
 

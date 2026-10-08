@@ -1,6 +1,12 @@
 /** Local indexes of visible native playlist rows, isolated by playlist ID. */
 export type PlaylistEntry = { id: string; creator: string; key: string };
 export type PlaylistIndex = { entries: PlaylistEntry[]; indexedAt: number };
+export function creatorOrder(entries: PlaylistEntry[]): PlaylistEntry[] {
+  const groups = new Map<string, PlaylistEntry[]>();
+  for (const entry of entries) groups.set(entry.key, [...(groups.get(entry.key) || []), entry]);
+  return [...groups.values()].filter(group => group.length > 1).flat()
+    .concat([...groups.values()].filter(group => group.length === 1).flat());
+}
 const PREFIX = 'ytwash:playlist:';
 const indexedSignatures = new Map<string, string>();
 export function playlistId(): string | null {
