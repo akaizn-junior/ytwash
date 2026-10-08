@@ -1,4 +1,5 @@
 /** Playback cursor backed by the persisted grouped playlist index. */
+import { clearCompletedVideo } from './cleanup';
 import { preferences, preferencesReady, preferenceKeys } from './preferences';
 import { playlistId, readPlaylist, indexPlaylist, creatorOrder, type PlaylistEntry } from './playlists';
 const QUEUE_KEY = 'ytwash:creator-queue:v1';
@@ -95,11 +96,12 @@ async function refreshQueue(queue: CreatorQueue, id: string): Promise<CreatorQue
   saveQueue(updated);
   return updated;
 }
-async function advance(direction: number): Promise<void> {
+async function advance(direction: number, completed = false): Promise<void> {
   const initial = getQueue(), id = videoId();
   if (!initial || !id || advancing) return;
   advancing = true;
   const queue = await refreshQueue(initial, id);
+  if (completed) await clearCompletedVideo();
   const active = getQueue();
   if (videoId() !== id || !active || active.creator !== queue.creator || active.ids[active.index] !== id) { advancing = false; return; }
   const next = queue.index + direction;
@@ -111,8 +113,7 @@ function ended(event: Event): void {
   const queue = getQueue(), id = videoId();
   if (!queue || !id || queue.ids[queue.index] !== id || advancing) return;
   event.stopImmediatePropagation();
-  attached?.dispatchEvent(new Event('ytwash-queued-ended'));
-  void advance(1);
+  void advance(1, true);
 }
 // Capture native player controls before YouTube navigates in native index order.
 document.addEventListener('click', event => {

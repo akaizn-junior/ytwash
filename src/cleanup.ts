@@ -1,4 +1,5 @@
 import { preferences, preferencesReady } from './preferences';
+import { readPlaylist, indexPlaylist } from './playlists';
 import { openSaveChooser, checked, closeSaveChooser } from './native-save';
 /** Opt-in cleanup through native controls; unknown membership is left unchanged. */
 let tracked: HTMLVideoElement | null = null;
@@ -6,6 +7,7 @@ let trackedId = '';
 let listenedSeconds = 0;
 let lastSample = -1;
 let completed = false;
+let removal: Promise<void> | null = null;
 
 function cleanupId(): string | null {
   return location.pathname === '/watch' ? new URLSearchParams(location.search).get('v') : null;
@@ -14,32 +16,60 @@ async function removeViaNativeMenu(videoId: string): Promise<void> {
   if (cleanupId() !== videoId || !preferences.autoRemove) return;
   const checkbox = await openSaveChooser(videoId);
   if (cleanupId() !== videoId || !preferences.autoRemove || !checkbox) return;
-  if (checked(checkbox) === true) checkbox.click();
+  if (checked(checkbox) !== true) { closeSaveChooser(); return; }
+  checkbox.click();
+  // Wait for the native control to confirm removal before clearing local data.
+  for (let attempt = 0; attempt < 20; attempt++) {
+    if (cleanupId() !== videoId || !preferences.autoRemove) return;
+    if (checked(checkbox) === false) {
+      const cached = await readPlaylist('WL');
+      if (cached) indexPlaylist('WL', cached.entries.filter(entry => entry.id !== videoId));
+      chrome.storage.local.remove('ytwash:resume:' + videoId);
+      closeSaveChooser();
+      return;
+    }
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
   closeSaveChooser();
 }
+export function clearCompletedVideo(): Promise<void> {
+  if (removal) return removal;
+  if (!tracked || cleanupId() !== trackedId || !preferences.autoRemove || completed || listenedSeconds < 5) return Promise.resolve();
+  completed = true;
+  const id = trackedId;
+  const task = removeViaNativeMenu(id).catch(() => {
+    console.warn('YTWash could not confirm removal from Watch Later.');
+  });
+  removal = task;
+  void task.finally(() => { if (removal === task) removal = null; });
+  return task;
+}
+
 function onTimeUpdate(): void {
   if (!tracked || tracked.paused || tracked.seeking) return;
   const now = tracked.currentTime;
   if (lastSample >= 0 && now >= lastSample) {
-    // Ignore large seeking leaps and progress while the tab is not visibly playing.
+    // Count actual playback in foreground and background tabs; ignore seeking leaps.
     const delta = now - lastSample;
-    if (delta <= 2.5 && !document.hidden) listenedSeconds += delta;
+    if (delta <= 2.5) listenedSeconds += delta;
   }
   lastSample = now;
 }
 function onSeek(): void { lastSample = -1; }
-function onEnded(): void {
-  if (!tracked || !preferences.autoRemove || completed) return;
-  // Natural ended event plus some actual playback is required.
-  if (listenedSeconds < 5) return;
-  completed = true;
-  void removeViaNativeMenu(trackedId);
+function onEnded(event: Event): void {
+  if (!tracked || !preferences.autoRemove || completed || listenedSeconds < 5) return;
+  // Hold native autoplay until its own playlist control confirms cleanup.
+  event.stopImmediatePropagation();
+  const video = tracked, id = trackedId;
+  void clearCompletedVideo().then(() => {
+    if (cleanupId() === id && video.isConnected) video.dispatchEvent(new Event('ended'));
+  });
 }
 function detach(): void {
   tracked?.removeEventListener('timeupdate',onTimeUpdate);
   tracked?.removeEventListener('seeking',onSeek);
-  tracked?.removeEventListener('ended',onEnded);
-  tracked?.removeEventListener('ytwash-queued-ended',onEnded);
+  tracked?.removeEventListener('ended',onEnded,true);
+
 }
 function trackPlayback(): void {
   const id = cleanupId();
@@ -49,8 +79,8 @@ function trackPlayback(): void {
     detach();tracked=video;trackedId=id;listenedSeconds=0;lastSample=-1;completed=false;
     video.addEventListener('timeupdate',onTimeUpdate);
     video.addEventListener('seeking',onSeek);
-    video.addEventListener('ended',onEnded);
-    video.addEventListener('ytwash-queued-ended',onEnded);
+    video.addEventListener('ended',onEnded,true);
+
   }
 }
 void preferencesReady.then(trackPlayback);
