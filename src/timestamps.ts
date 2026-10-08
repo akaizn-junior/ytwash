@@ -1,4 +1,5 @@
 import { readPlaylist, indexPlaylist } from './playlists';
+import { saveForLater } from './reminder-queue';
 import { preferences, preferencesReady } from './preferences';
 import { watchId, saveControls, waitForWatchLater, checked, closeSaveChooser } from './native-save';
 /** Persist explicit resume points locally; never write to YouTube's private APIs. */
@@ -50,6 +51,7 @@ async function saveCurrent(id: string, seconds: number): Promise<void> {
     // Persist the user's explicit Save action even when YouTube's chooser
     // changes markup or cannot expose a confirmed Watch Later state.
     if (!await store(id, seconds)) return;
+    saveForLater(id);
     if (watchId() !== id) return;
     // Let the trusted native Save click open its playlist chooser normally.
     const checkbox = await waitForWatchLater(id);
@@ -187,3 +189,4 @@ window.addEventListener('popstate', tick);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
 window.setInterval(tick, 1500);
 tick();
+
