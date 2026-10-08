@@ -34,7 +34,7 @@ test('unpacked extension loads and groups Watch Later videos', async ({}, testIn
     await expect(groups).toContainText('2 indexed videos');
     await expect(groups.locator('summary')).toContainText('Example Creator · 2 videos');
     await groups.locator('summary').click();
-    await expect(groups.getByRole('button', { name: 'Play this creator' })).toBeVisible();
+    await expect(groups.getByRole('button', { name: 'Play all indexed Watch Later videos from Example Creator' })).toBeVisible();
     await groups.locator('#ytwash-search').fill('Second video');
     await expect(groups.locator('.yw-item')).toHaveCount(1);
     await page.screenshot({ path: testInfo.outputPath('creator-groups.png'), fullPage: true });
