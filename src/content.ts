@@ -37,6 +37,7 @@ function entryFor(el: HTMLElement): Entry | null {
 }
 function restore(): void {
   rendering = true;
+  observer?.disconnect();
   try {
     document.querySelectorAll<HTMLElement>(VIDEO_SELECTOR).forEach(el => { el.hidden = false; el.style.removeProperty('display'); });
     for (const header of document.querySelectorAll('.' + GROUP_CLASS)) header.remove();
@@ -49,7 +50,7 @@ function restore(): void {
       list.push(el);byParent.set(el.parentElement,list);
     }
     for (const [parent, list] of byParent) for (const el of list) parent.appendChild(el);
-  } finally { rendering = false; }
+  } finally { rendering = false; observer?.observe(document.documentElement,{subtree:true,childList:true}); }
 }
 function reset(): void {
   restore();
@@ -86,6 +87,7 @@ function render(): void {
   const parent = entries[0]?.element.parentElement;
   if (!parent) return;
   rendering = true;
+  observer?.disconnect();
   try {
     document.querySelectorAll('.' + GROUP_CLASS).forEach(el=>el.remove());
     nodes.forEach(el=>{el.hidden=false;el.style.removeProperty('display');});
@@ -121,7 +123,7 @@ function render(): void {
     }
     // A creator seen exactly once remains a normal YouTube playlist row.
     for (const entry of entries) if (!grouped.has(entry.element)) parent.appendChild(entry.element);
-  } finally { rendering = false; }
+  } finally { rendering = false; observer?.observe(document.documentElement,{subtree:true,childList:true}); }
 }
 function schedule(): void {
   if (scheduled !== undefined) clearTimeout(scheduled);
