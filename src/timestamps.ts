@@ -73,6 +73,7 @@ function decorateSave(): void {
   ) : []);
   for (const [control, original] of saveLayouts) {
     if (controls.has(control)) continue;
+    control.querySelectorAll('.' + ICON_CLASS).forEach(icon => icon.remove());
     if (control.style.position === 'relative') control.style.setProperty('position', original.position, original.positionPriority);
     if (control.style.paddingRight === original.reservedPadding) control.style.setProperty('padding-right', original.padding, original.paddingPriority);
     saveLayouts.delete(control);
