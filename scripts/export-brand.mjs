@@ -17,7 +17,7 @@ for (const [name,width,height] of [['store-tile',440,280],['store-marquee',1400,
   .copy{flex:1}h1{font-size:${small?38:88}px;letter-spacing:-3px;margin:0 0 ${small?12:24}px;line-height:1}
   p{font-size:${small?17:32}px;line-height:1.4;margin:0;max-width:720px;font-weight:500}
   .features{font-size:${small?11:17}px;letter-spacing:${small?0:1}px;margin-top:${small?18:34}px;color:#ffe4eb}
-  </style></head><body><div class="logo">${logo}</div><div class="copy"><h1>YTWash</h1><p>Group by creator.<br>Pick up where you stopped.</p><div class="features">PLAYLIST GROUPS · SAVED TIMESTAMPS</div></div></body></html>`;
+  </style></head><body><div class="logo">${logo}</div><div class="copy"><h1>YTWash</h1><p>watch it. clear it.</p><div class="features">PLAYLIST GROUPS · SAVED TIMESTAMPS</div></div></body></html>`;
   writeFileSync(`assets/brand/${name}.html`,html);
   const page = await browser.newPage({viewport:{width,height},deviceScaleFactor:1});
   await page.setContent(html);await page.screenshot({path:`assets/brand/${name}.png`});await page.close();

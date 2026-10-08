@@ -8,6 +8,8 @@ White rounded video button with red `yt` lettering. The original SVG uses paths,
 - `social-preview.png`: 1200 × 630 release/social graphic.
 - Corresponding HTML files: editable promotional graphic sources.
 
+Slogan: **watch it. clear it.**
+
 Palette: red `#ff0033`, white `#ffffff`. The white button is intended for colored or dark backgrounds. Promotional copy describes creator groups and saved timestamps without claiming YouTube affiliation.
 
 Recreate PNG exports with `PLAYWRIGHT_BROWSERS_PATH=/path/to/browsers node scripts/export-brand.mjs` after installing the Playwright Chromium browser. Review store-specific listing requirements before upload; promotional graphics do not replace screenshots of the actual extension.
