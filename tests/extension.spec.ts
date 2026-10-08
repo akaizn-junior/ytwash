@@ -29,14 +29,17 @@ test('unpacked extension loads and groups Watch Later videos', async ({}, testIn
 </body></html>` });
     });
     await page.goto('https://www.youtube.com/playlist?list=WL');
-    const groups = page.locator('#ytwash-creator-groups');
+    const groups = page.locator('.ytwash-native-group');
     await expect(groups).toBeVisible({ timeout: 15000 });
-    await expect(groups).toContainText('2 indexed videos');
-    await expect(groups.locator('summary')).toContainText('Example Creator · 2 videos');
-    await groups.locator('summary').click();
+    await expect(page.locator('#ytwash-native-controls')).toContainText('Group by creator (1)');
+    await expect(groups).toContainText('Example Creator · 2 videos');
+    await expect(groups).toHaveCount(1);
     await expect(groups.getByRole('button', { name: 'Play all indexed Watch Later videos from Example Creator' })).toBeVisible();
-    await groups.locator('#ytwash-search').fill('Second video');
-    await expect(groups.locator('.yw-item')).toHaveCount(1);
+    await expect(page.locator('ytd-playlist-video-renderer')).toHaveCount(2);
+    await groups.getByRole('button', { name: /Example Creator · 2 videos/ }).click();
+    await expect(page.locator('ytd-playlist-video-renderer').first()).toBeHidden();
+    await groups.getByRole('button', { name: /Example Creator · 2 videos/ }).click();
+    await expect(page.locator('ytd-playlist-video-renderer').first()).toBeVisible();
     await page.screenshot({ path: testInfo.outputPath('creator-groups.png'), fullPage: true });
   } finally {
     await context.close();
