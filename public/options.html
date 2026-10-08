@@ -12,20 +12,28 @@
     fieldset { border: 0; padding: 0; margin: 32px 0; }
     legend { font-size: 19px; font-weight: 600; margin-bottom: 16px; }
     label { display: grid; grid-template-columns: 20px 1fr; gap: 12px; margin: 20px 0; cursor: pointer; }
-    input { margin-top: 4px; accent-color: #7652df; }
+    input { margin-top: 4px; accent-color: #ff0033; }
     small { display: block; font-size: 14px; line-height: 1.5; margin-top: 5px; color: light-dark(#555, #bbb); }
     #status { min-height: 24px; }
   </style>
 </head>
 <body>
   <h1><img src="icons/icon-48.png" alt="" width="48" height="48" style="vertical-align:middle;background:#ff0033;border-radius:10px;margin-right:12px">YTWash</h1>
-  <p>Your preferences stay in this browser. Changes apply to open YouTube tabs.</p>
+  <p><strong>watch it. clear it.</strong></p>
+  <section aria-labelledby="how-it-works">
+    <h2 id="how-it-works">Save your place. Keep watching.</h2>
+    <p>Open a video’s menu and choose <strong>Save</strong>, marked with a red lightning bolt. YTWash adds it to Watch Later and remembers the current time. Open it again in this browser to continue where you stopped.</p>
+    <p>When creator grouping is on, the playlist, watch-page sidebar, Play all, and Next follow the same creator order. Creators with one loaded video appear under <strong>Everything else</strong>.</p>
+  </section>
+  <p>Choose how to organize and clear your playlists below. Changes apply to open YouTube tabs.</p>
   <fieldset disabled id="preferences">
     <legend>Playlist preferences</legend>
-    <label><input type="checkbox" data-key="ytwash:group-by-creator" data-default="false"><span>Group playlists by creator<small>Applies to Watch Later and other YouTube playlists. Group loaded videos by creator automatically. Turn off to restore YouTube’s original order.</small></span></label>
-    <label><input type="checkbox" data-key="ytwash:auto-remove-completed" data-default="false"><span>Remove completed videos from Watch Later<small>Off by default. After a video finishes naturally, remove it only if Watch Later membership can be confirmed. This does not close the video tab.</small></span></label>
+    <label><input type="checkbox" data-key="ytwash:group-by-creator" data-default="false"><span>Group playlists by creator<small>Group videos from the same creator in Watch Later and other playlists, including the watch-page sidebar. Newly loaded videos join their groups. Turn off to use YouTube’s original order.</small></span></label>
+    <label><input type="checkbox" data-key="ytwash:auto-remove-completed" data-default="false"><span>Remove completed videos from Watch Later<small>Off by default. Automatically remove a video from Watch Later when it finishes, after at least five seconds of playback. Clears its saved position too. Other playlists and your open tab stay intact.</small></span></label>
   </fieldset>
   <p id="status" role="status" aria-live="polite"></p>
+  <p><small>Your preferences and saved positions stay in this browser profile. They do not sync across devices. A timestamp in a video link takes priority over your saved position.</small></p>
+  <p><a href="https://akaizn-junior.github.io/ytwash/" target="_blank" rel="noopener noreferrer">Installation and help</a> · <a href="https://github.com/akaizn-junior/ytwash/issues" target="_blank" rel="noopener noreferrer">Report a problem</a></p>
   <script src="options.js"></script>
 </body>
 </html>
