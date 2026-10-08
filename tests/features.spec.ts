@@ -50,11 +50,10 @@ test('Watch Later stays native until grouping is requested', async () => {
   const { context, page } = await fixture();
   try {
     await page.goto('https://www.youtube.com/playlist?list=WL');
-    const grouping = page.locator('#ytwash-grouping-toggle');
-    await expect(grouping).toHaveText('Group by creator', { timeout: 15000 });
+    await expect(page.locator('#ytwash-grouping-toggle')).toHaveCount(0);
     await expect(page.locator('.ytwash-native-group')).toHaveCount(0);
-    await grouping.click();
-    await expect(grouping).toHaveAttribute('aria-pressed', 'true');
+    const settings = await openOptions(context);
+    await settings.locator('[data-key="ytwash:group-by-creator"]').check();
     await expect(page.locator('.ytwash-native-group ytd-playlist-video-renderer')).toHaveCount(2, { timeout: 15000 });
     await page.locator('.ytwash-native-group a#video-title').first().click();
     await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + FIRST);
@@ -68,12 +67,10 @@ test('grouping is a one-time action and undo restores Watch Later', async () => 
   const { context, page } = await fixture();
   try {
     await page.goto('https://www.youtube.com/playlist?list=WL');
-    const toggle = page.locator('#ytwash-grouping-toggle');
-    await expect(toggle).toHaveText('Group by creator', { timeout: 15000 });
-    await toggle.click();
+    const settings = await openOptions(context);
+    await settings.locator('[data-key="ytwash:group-by-creator"]').check();
     await expect(page.locator('.ytwash-native-group')).toHaveCount(1);
-    await toggle.click();
-    await expect(toggle).toHaveText('Group by creator');
+    await settings.locator('[data-key="ytwash:group-by-creator"]').uncheck();
     await expect(page.locator('.ytwash-native-group')).toHaveCount(0);
     expect(await page.locator('ytd-playlist-video-renderer a#video-title').allTextContents())
       .toEqual(['First video', 'Second video']);
@@ -288,3 +285,24 @@ for (const display of ['flex', 'grid', 'block']) {
     } finally { await context.close(); }
   });
 }
+
+test('red Save lightning shares the native clickable hover container', async () => {
+  const { context, page } = await fixture();
+  try {
+    await page.goto('https://www.youtube.com/watch?v=' + FIRST);
+    await page.locator('#native-save').evaluate(button => {
+      const renderer = document.createElement('ytd-menu-service-item-renderer');
+      renderer.innerHTML = '<tp-yt-paper-item style="display:flex;box-sizing:border-box;width:180px;padding:12px 16px"><yt-formatted-string>Save</yt-formatted-string></tp-yt-paper-item>';
+      button.replaceWith(renderer);
+    });
+    const container = page.locator('tp-yt-paper-item');
+    const icon = container.locator('.ytwash-save-lightning');
+    await expect(icon).toHaveCount(1);
+    expect(await icon.evaluate(node => getComputedStyle(node).fill)).toBe('rgb(255, 0, 51)');
+    const bounds = (await icon.boundingBox())!;
+    await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+    expect(await container.evaluate(node => node.matches(':hover'))).toBe(true);
+    expect(await page.evaluate(({x,y}) => !!document.elementFromPoint(x,y)?.closest('tp-yt-paper-item'),
+      {x:bounds.x + bounds.width / 2,y:bounds.y + bounds.height / 2})).toBe(true);
+  } finally { await context.close(); }
+});

@@ -30,11 +30,11 @@ test('unpacked extension loads and groups Watch Later videos on request', async 
     });
     await page.goto('https://www.youtube.com/playlist?list=WL');
     const groups = page.locator('.ytwash-native-group');
-    const grouping = page.locator('#ytwash-grouping-toggle');
-    await expect(grouping).toHaveText('Group by creator', { timeout: 15000 });
+    await expect(page.locator('#ytwash-grouping-toggle')).toHaveCount(0);
     await expect(groups).toHaveCount(0);
-    await grouping.click();
-    await expect(grouping).toHaveAttribute('aria-pressed', 'true');
+    const settings = await context.newPage();
+    await settings.goto(new URL('options.html', worker.url()).href);
+    await settings.locator('[data-key="ytwash:group-by-creator"]').check();
     await expect(groups).toBeVisible({ timeout: 15000 });
     await expect(groups).toHaveAttribute('aria-label', 'Example Creator · 2 videos');
     await expect(groups).toHaveCount(1);
@@ -63,7 +63,10 @@ test('single-video creators are not grouped and native rows remain intact', asyn
     });
     await page.goto('https://www.youtube.com/playlist?list=WL');
     await expect(page.locator('.ytwash-native-group')).toHaveCount(0);
-    await page.locator('#ytwash-grouping-toggle').click();
+    const worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker');
+    const settings = await context.newPage();
+    await settings.goto(new URL('options.html', worker.url()).href);
+    await settings.locator('[data-key="ytwash:group-by-creator"]').check();
     await expect(page.locator('.ytwash-native-group')).toHaveCount(1, { timeout: 15000 });
     await expect(page.locator('.ytwash-native-group')).toHaveAttribute('aria-label', 'Creator A · 2 videos');
     await expect(page.locator('ytd-playlist-video-renderer')).toHaveCount(3);

@@ -27,9 +27,7 @@ YTWash is not currently distributed through a browser extension store, so it mus
 
 ### Group Watch Later videos by creator
 
-Open [Watch Later](https://www.youtube.com/playlist?list=WL). The playlist stays in YouTube's normal view until you click **Group by creator**.
-
-YTWash then groups the videos currently loaded in the page. Click **Grouping on · Undo** to restore the original order. Grouping is a one-time action; if YouTube loads more videos afterward, turn grouping off and on again to include them.
+Enable **Group Watch Later by creator** in YTWash Options. Loaded Watch Later rows group automatically; disabling the option restores their original order. YTWash adds no grouping toggle to the playlist page.
 
 ### Play videos in display order
 
