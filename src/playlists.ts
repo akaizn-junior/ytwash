@@ -17,7 +17,7 @@ export function playlistId(): string | null {
 export function indexPlaylist(id: string, entries: PlaylistEntry[]): void {
   const bounded = entries.slice(0, 5000).map(({ id, creator, key }) => ({ id, creator, key }));
   const signature = JSON.stringify(bounded);
-  if (!bounded.length || indexedSignatures.get(id) === signature) return;
+  if (indexedSignatures.get(id) === signature) return;
   indexedSignatures.set(id, signature);
   chrome.storage.local.set({ [PREFIX + id]: { entries: bounded, order: creatorOrder(bounded).map(entry => entry.id), indexedAt: Date.now() } }, () => {
     if (chrome.runtime.lastError) {
