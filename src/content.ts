@@ -2,7 +2,7 @@ import { startCreatorPlayback } from './playback';
 import './cleanup';
 import './timestamps';
 import { preferences, preferencesReady, preferenceKeys } from './preferences';
-import { playlistId, indexPlaylist } from './playlists';
+import { playlistId, indexPlaylist, creatorOrder } from './playlists';
 
 /** Apply the stored grouping preference without adding page controls. */
 const VIDEO_SELECTOR = 'ytd-playlist-video-renderer';
@@ -167,11 +167,43 @@ document.addEventListener('click', event => {
   if (!onPlaylist() || event.defaultPrevented || event.button !== 0 ||
       event.metaKey || event.ctrlKey || event.shiftKey || event.altKey ||
       !(event.target instanceof Element)) return;
+  const play = event.target.closest<HTMLButtonElement>('button');
+  if (play && preferences.groupByCreator && preferences.groupPlayback &&
+      play.closest('ytd-playlist-header-renderer, ytd-playlist-header-view-model, ytd-playlist-sidebar-primary-info-renderer') &&
+      /^(play(?: all)?|reproduzir(?: tudo)?|tocar(?: tudo)?)(\s|$)/i.test(play.getAttribute('aria-label') || play.textContent || '')) {
+    const entries = [...document.querySelectorAll<HTMLElement>(VIDEO_SELECTOR)]
+      .map(entryFor).filter((entry): entry is Entry => entry !== null).sort((a,b) => a.index - b.index);
+    if (startCreatorPlayback(playlistId()!, creatorOrder(entries).map(entry => entry.id))) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    return;
+  }
   const link = event.target.closest<HTMLAnchorElement>(
-    'a#video-title, ytd-thumbnail a[href*="/watch"], a#thumbnail[href*="/watch"]'
+    'a[href*="/watch"]'
   );
   const row = link?.closest<HTMLElement>(VIDEO_SELECTOR);
-  if (!link || !row) return;
+  if (!link) return;
+  if (!row) {
+    const url = new URL(link.href);
+    if (!preferences.groupByCreator || !preferences.groupPlayback || url.pathname !== '/watch' ||
+        url.searchParams.get('list') !== playlistId() ||
+        !link.closest('ytd-playlist-header-renderer, ytd-playlist-header-view-model, ytd-playlist-sidebar-primary-info-renderer')) return;
+    const entries = [...document.querySelectorAll<HTMLElement>(VIDEO_SELECTOR)]
+      .map(entryFor).filter((entry): entry is Entry => entry !== null).sort((a,b) => a.index - b.index);
+    const ids = creatorOrder(entries).map(entry => entry.id);
+    if (!ids.length) return;
+    const originalId = url.searchParams.get('v');
+    url.searchParams.set('v', ids[0]);
+    // An explicit timestamp belongs only to the video identified by that URL.
+    if (originalId !== ids[0]) ['t', 'start', 'time_continue'].forEach(key => url.searchParams.delete(key));
+    if (startCreatorPlayback(playlistId()!, ids, url.href)) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    return;
+  }
+  if (preferences.groupByCreator && !preferences.groupPlayback) return;
   const ordered = [...document.querySelectorAll<HTMLElement>(VIDEO_SELECTOR)]
     .map(entryFor).filter((item): item is Entry => item !== null);
   const selected = ordered.findIndex(item => item.element === row);

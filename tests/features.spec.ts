@@ -22,7 +22,7 @@ const watch = '<!doctype html><html><body>' +
   'document.body.append(picker);});' +
   '</script></body></html>';
 
-async function fixture(): Promise<{ context: BrowserContext; page: Page }> {
+async function fixture(playlistBody = playlist): Promise<{ context: BrowserContext; page: Page }> {
   const context = await chromium.launchPersistentContext('', {
     channel: 'chromium', headless: true,
     args: ['--disable-extensions-except=' + extensionPath, '--load-extension=' + extensionPath]
@@ -41,7 +41,7 @@ async function fixture(): Promise<{ context: BrowserContext; page: Page }> {
       return;
     }
     await route.fulfill({ status: 200, contentType: 'text/html',
-      body: url.pathname === '/playlist' ? playlist : watch });
+      body: url.pathname === '/playlist' ? playlistBody : watch });
   });
   return { context, page };
 }
@@ -330,5 +330,79 @@ test('ordinary playlists group, retain their playlist context, and index separat
       const values = await chrome.storage.local.get(['ytwash:playlist:PL_example', 'ytwash:playlist:WL']);
       return !!values['ytwash:playlist:PL_example'] && !!values['ytwash:playlist:WL'];
     })).toBe(true);
+  } finally { await context.close(); }
+});
+
+const THIRD = '12345678901';
+const FOURTH = '98765432109';
+const interleaved = '<!doctype html><html><body><ytd-playlist-header-renderer>' +
+  '<a id="play-all" href="/watch?v=abcdefghijk&list=PL_grouped">Play all</a>' +
+  '<button aria-label="Play all">Play all</button></ytd-playlist-header-renderer>' +
+  [[FIRST,'Creator A'],[SECOND,'Creator B'],[THIRD,'Creator A'],[FOURTH,'Creator B']].map(([id,creator]) =>
+    `<ytd-playlist-video-renderer><a id="video-title" href="/watch?v=${id}&list=PL_grouped">${id}</a><ytd-channel-name><a href="/channel/${creator.replaceAll(' ','')}">${creator}</a></ytd-channel-name></ytd-playlist-video-renderer>`
+  ).join('') + '</body></html>';
+
+for (const start of ['header link', 'header button', 'direct playlist URL']) {
+  test(`configured creator playback follows groups from a native ${start}`, async () => {
+    const { context, page } = await fixture(interleaved);
+    try {
+      await page.goto('https://www.youtube.com/playlist?list=PL_grouped');
+      const options = await openOptions(context);
+      await options.locator('[data-key="ytwash:group-by-creator"]').check();
+      await expect(page.locator('.ytwash-native-group')).toHaveCount(2);
+      await expect.poll(() => options.evaluate(async () =>
+        (await chrome.storage.local.get('ytwash:playlist:PL_grouped'))['ytwash:playlist:PL_grouped']?.entries.length
+      )).toBe(4);
+      if (start === 'header link') await page.locator('#play-all').click();
+      else if (start === 'header button') await page.getByRole('button', {name:'Play all',exact:true}).click();
+      else await page.goto('https://www.youtube.com/watch?v=' + FIRST + '&list=PL_grouped');
+      await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + FIRST + '&list=PL_grouped');
+      await expect.poll(() => page.evaluate(() => sessionStorage.getItem('ytwash:creator-queue:v1'))).not.toBeNull();
+      // A native autoplay handler must not replace our grouped next-video choice.
+      await page.locator('video').evaluate((v: HTMLVideoElement) => {
+        v.addEventListener('ended', () => { document.body.dataset.nativeAdvance = 'ran'; });
+        v.dispatchEvent(new Event('ended'));
+      });
+      expect(await page.locator('body').getAttribute('data-native-advance')).toBeNull();
+      await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + THIRD + '&list=PL_grouped', {timeout:12000});
+      await page.locator('video').evaluate((v: HTMLVideoElement) => v.dispatchEvent(new Event('ended')));
+      await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + SECOND + '&list=PL_grouped', {timeout:12000});
+    } finally { await context.close(); }
+  });
+}
+
+test('turning grouped playback off preserves native Play all behavior', async () => {
+  const { context, page } = await fixture(interleaved);
+  try {
+    await page.goto('https://www.youtube.com/playlist?list=PL_grouped');
+    const options = await openOptions(context);
+    await options.locator('[data-key="ytwash:group-by-creator"]').check();
+    await options.locator('[data-key="ytwash:group-playback"]').uncheck();
+    await expect(options.locator('#status')).toHaveText('Preferences saved.');
+    await page.locator('#play-all').click();
+    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + FIRST + '&list=PL_grouped');
+    expect(await page.evaluate(() => sessionStorage.getItem('ytwash:creator-queue:v1'))).toBeNull();
+  } finally { await context.close(); }
+});
+
+test('direct playlist startup groups loaded sidebar videos without a prior index', async () => {
+  const { context, page } = await fixture();
+  try {
+    await page.goto('https://www.youtube.com/watch?v=' + FIRST);
+    const options = await openOptions(context);
+    await options.locator('[data-key="ytwash:group-by-creator"]').check();
+    await page.route('https://www.youtube.com/watch?*', route => route.fulfill({
+      status:200,contentType:'text/html',body: watch.replace('</body>',
+        [[FIRST,'Creator A'],[SECOND,'Creator B'],[THIRD,'Creator A']].map(([id,creator]) =>
+          `<ytd-playlist-panel-video-renderer><a href="/watch?v=${id}&list=PL_sidebar">Video</a><span id="byline">${creator}</span></ytd-playlist-panel-video-renderer>`
+        ).join('') + '</body>')
+    }));
+    await page.goto('https://www.youtube.com/watch?v=' + FIRST + '&list=PL_sidebar');
+    await expect.poll(() => page.evaluate(() => sessionStorage.getItem('ytwash:creator-queue:v1'))).not.toBeNull();
+    await expect.poll(() => options.evaluate(async () =>
+      (await chrome.storage.local.get('ytwash:playlist:PL_sidebar'))['ytwash:playlist:PL_sidebar']?.entries.length
+    )).toBe(3);
+    await page.locator('video').evaluate((v: HTMLVideoElement) => v.dispatchEvent(new Event('ended')));
+    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + THIRD + '&list=PL_sidebar', {timeout:12000});
   } finally { await context.close(); }
 });

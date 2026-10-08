@@ -39,6 +39,7 @@ function detach(): void {
   tracked?.removeEventListener('timeupdate',onTimeUpdate);
   tracked?.removeEventListener('seeking',onSeek);
   tracked?.removeEventListener('ended',onEnded);
+  tracked?.removeEventListener('ytwash-queued-ended',onEnded);
 }
 function trackPlayback(): void {
   const id = cleanupId();
@@ -49,6 +50,7 @@ function trackPlayback(): void {
     video.addEventListener('timeupdate',onTimeUpdate);
     video.addEventListener('seeking',onSeek);
     video.addEventListener('ended',onEnded);
+    video.addEventListener('ytwash-queued-ended',onEnded);
   }
 }
 void preferencesReady.then(trackPlayback);
