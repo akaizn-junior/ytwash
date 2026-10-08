@@ -12,6 +12,8 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - run: npx playwright install --with-deps chromium
+      - name: Install FFmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y ffmpeg
       - name: Generate deterministic playable media fixture
         run: |
           mkdir -p tests/fixtures
