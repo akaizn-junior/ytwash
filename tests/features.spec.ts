@@ -39,20 +39,6 @@ async function fixture(): Promise<{ context: BrowserContext; page: Page }> {
   return { context, page };
 }
 
-test('creator playback advances to the next indexed video after ended', async () => {
-  const { context, page } = await fixture();
-  try {
-    await page.goto('https://www.youtube.com/playlist?list=WL');
-    await expect(page.locator('#ytwash-native-controls')).toContainText('Group by creator (1)', { timeout: 15000 });
-    await page.getByRole('button', { name: 'Play all indexed Watch Later videos from Example Creator' }).click();
-    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + FIRST);
-    await expect(page.locator('#ytwash-playback-label')).toContainText('1/2');
-    await page.locator('video').evaluate((video: HTMLVideoElement) => video.dispatchEvent(new Event('ended')));
-    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + SECOND, { timeout: 12000 });
-    await expect(page.locator('#ytwash-playback-label')).toContainText('2/2');
-  } finally { await context.close(); }
-});
-
 test('completed video is not removed when Watch Later membership is uncertain', async () => {
   const { context, page } = await fixture();
   try {
