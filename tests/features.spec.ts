@@ -59,10 +59,10 @@ test('creator playback advances to the next indexed video after ended', async ()
     await expect(page.locator('#ytwash-creator-groups')).toContainText('2 indexed videos', { timeout: 15000 });
     await page.locator('#ytwash-creator-groups summary').click();
     await page.getByRole('button', { name: 'Play all indexed Watch Later videos from Example Creator' }).click();
-    await expect(page).toHaveURL('/watch?v=' + FIRST);
+    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + FIRST);
     await expect(page.locator('#ytwash-playback-label')).toContainText('1/2');
     await page.locator('video').evaluate((video: HTMLVideoElement) => video.dispatchEvent(new Event('ended')));
-    await expect(page).toHaveURL('/watch?v=' + SECOND, { timeout: 12000 });
+    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + SECOND, { timeout: 12000 });
     await expect(page.locator('#ytwash-playback-label')).toContainText('2/2');
   } finally { await context.close(); }
 });
