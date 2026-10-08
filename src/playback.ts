@@ -13,7 +13,7 @@ function getQueue(): CreatorQueue | null {
     if (!parsed || typeof parsed !== 'object') return null;
     const q = parsed as Partial<CreatorQueue>;
     if (typeof q.creator !== 'string' || !Array.isArray(q.ids) || q.ids.length === 0 ||
-      q.ids.length > 5000 || q.ids.some(id => typeof id !== 'string' || !/^[\\w-]{11}$/.test(id)) ||
+      q.ids.length > 5000 || q.ids.some(id => typeof id !== 'string' || !/^[\w-]{11}$/.test(id)) ||
       typeof q.index !== 'number' || !Number.isInteger(q.index) || q.index < 0 || q.index >= q.ids.length) return null;
     return { creator: q.creator, ids: q.ids, index: q.index };
   } catch { return null; }
@@ -28,7 +28,7 @@ export function stopCreatorPlayback(): void {
   advancing = false;
 }
 export function startCreatorPlayback(creator: string, ids: string[]): boolean {
-  const unique = [...new Set(ids)].filter(id => /^[\\w-]{11}$/.test(id));
+  const unique = [...new Set(ids)].filter(id => /^[\w-]{11}$/.test(id));
   if (!unique.length || !saveQueue({ creator, ids: unique, index: 0 })) return false;
   location.assign('/watch?v=' + encodeURIComponent(unique[0]));
   return true;
