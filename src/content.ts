@@ -2,6 +2,7 @@ import { startCreatorPlayback } from './playback';
 import './cleanup';
 import './timestamps';
 import { preferences, preferencesReady, preferenceKeys } from './preferences';
+import { playlistId, indexPlaylist } from './playlists';
 
 /** Apply the stored grouping preference without adding page controls. */
 const VIDEO_SELECTOR = 'ytd-playlist-video-renderer';
@@ -17,8 +18,8 @@ let groupingEnabled = false;
 let lastPage = '';
 let groupedSignature = '';
 
-function onWatchLater(): boolean {
-  return location.pathname === '/playlist' && new URLSearchParams(location.search).get('list') === 'WL';
+function onPlaylist(): boolean {
+  return location.pathname === '/playlist' && playlistId() !== null;
 }
 
 function entryFor(el: HTMLElement): Entry | null {
@@ -44,7 +45,10 @@ function playlistParent(): HTMLElement | null {
 }
 
 function reconcileGrouping(): void {
-  if (!onWatchLater()) return;
+  if (!onPlaylist()) return;
+  const indexed = [...document.querySelectorAll<HTMLElement>(VIDEO_SELECTOR)]
+    .map(entryFor).filter((entry): entry is Entry => entry !== null).sort((a,b) => a.index - b.index);
+  indexPlaylist(playlistId()!, indexed);
   if (!preferences.groupByCreator) {
     if (groupingEnabled) restoreRows();
     groupingEnabled = false;
@@ -100,7 +104,7 @@ function makeGroup(creator: string, key: string, entries: Entry[]): HTMLElement 
 }
 
 function groupRows(): void {
-  if (!onWatchLater() || rendering) return;
+  if (!onPlaylist() || rendering) return;
   const nodes = [...document.querySelectorAll<HTMLElement>(VIDEO_SELECTOR)];
   const entries = nodes.map(entryFor).filter((entry): entry is Entry => entry !== null)
     .sort((a, b) => a.index - b.index);
@@ -153,14 +157,14 @@ function scheduleControl(): void {
 
 // Reconcile only when loaded entries change; our own row moves are disconnected.
 observer = new MutationObserver(mutations => {
-  if (rendering || !onWatchLater()) return;
+  if (rendering || !onPlaylist()) return;
 
   scheduleControl();
 });
 observer.observe(document.documentElement, { subtree: true, childList: true });
 
 document.addEventListener('click', event => {
-  if (!onWatchLater() || event.defaultPrevented || event.button !== 0 ||
+  if (!onPlaylist() || event.defaultPrevented || event.button !== 0 ||
       event.metaKey || event.ctrlKey || event.shiftKey || event.altKey ||
       !(event.target instanceof Element)) return;
   const link = event.target.closest<HTMLAnchorElement>(
@@ -173,7 +177,9 @@ document.addEventListener('click', event => {
   const selected = ordered.findIndex(item => item.element === row);
   if (selected < 0) return;
   const queue = ordered.slice(selected).map(item => item.id);
-  if (queue.length > 0 && startCreatorPlayback('Watch Later', queue, link.href)) event.preventDefault();
+  const url = new URL(link.href);
+  url.searchParams.set('list', playlistId()!);
+  if (queue.length > 0 && startCreatorPlayback(playlistId()!, queue, url.href)) event.preventDefault();
 }, true);
 
 window.addEventListener('yt-navigate-finish', () => {

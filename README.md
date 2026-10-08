@@ -27,11 +27,11 @@ YTWash is not currently distributed through a browser extension store, so it mus
 
 ### Group Watch Later videos by creator
 
-Enable **Group Watch Later by creator** in YTWash Options. Loaded Watch Later rows group automatically; disabling the option restores their original order. YTWash adds no grouping toggle to the playlist page.
+Enable **Group playlists by creator** in YTWash Options. Loaded playlist rows group automatically; disabling the option restores their original order. YTWash adds no grouping toggle to the playlist page.
 
 ### Play videos in display order
 
-Click a video's native YouTube title or thumbnail in Watch Later. YTWash plays the remaining indexed videos in their displayed order. The queue lasts for the current browsing session.
+Click a video's native YouTube title or thumbnail in any playlist. YTWash plays the remaining indexed videos in their displayed order. The queue lasts for the current browsing session.
 
 ### Save to Watch Later at the current time
 
@@ -67,3 +67,5 @@ YTWash runs in your browser. It accesses YouTube pages to provide its features, 
 Found a bug or a YouTube page that doesn't work as expected? [Report an issue](https://github.com/akaizn-junior/ytwash/issues). Include your browser, YTWash version, what you tried, and what happened. Please avoid sharing private account information.
 
 YTWash is [open source under the MIT License](LICENSE).
+
+Playlist indexes are stored locally, separately for each playlist. YTWash indexes the videos YouTube has loaded; private playlists require your existing YouTube sign-in, and unavailable videos are skipped. Automatic removal still affects only confirmed Watch Later membership.
