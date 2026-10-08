@@ -1,5 +1,5 @@
 import { preferences, preferencesReady } from './preferences';
-import { readPlaylist, indexPlaylist } from './playlists';
+import { readPlaylist, indexPlaylist, playlistId } from './playlists';
 import { openSaveChooser, checked, closeSaveChooser } from './native-save';
 /** Opt-in cleanup through native controls; unknown membership is left unchanged. */
 let tracked: HTMLVideoElement | null = null;
@@ -14,23 +14,24 @@ function cleanupId(): string | null {
 }
 async function removeViaNativeMenu(videoId: string): Promise<void> {
   if (cleanupId() !== videoId || !preferences.autoRemove) return;
-  const checkbox = await openSaveChooser(videoId);
-  if (cleanupId() !== videoId || !preferences.autoRemove || !checkbox) return;
-  if (checked(checkbox) !== true) { closeSaveChooser(); return; }
+  const list = playlistId() || 'WL';
+  const checkbox = await openSaveChooser(videoId, list);
+  if (cleanupId() !== videoId || (playlistId() || 'WL') !== list || !preferences.autoRemove || !checkbox) return;
+  if (checked(checkbox) !== true) { closeSaveChooser(list); return; }
   checkbox.click();
   // Wait for the native control to confirm removal before clearing local data.
   for (let attempt = 0; attempt < 20; attempt++) {
-    if (cleanupId() !== videoId || !preferences.autoRemove) return;
+    if (cleanupId() !== videoId || (playlistId() || 'WL') !== list || !preferences.autoRemove) return;
     if (checked(checkbox) === false) {
-      const cached = await readPlaylist('WL');
-      if (cached) indexPlaylist('WL', cached.entries.filter(entry => entry.id !== videoId));
+      const cached = await readPlaylist(list);
+      if (cached) indexPlaylist(list, cached.entries.filter(entry => entry.id !== videoId));
       chrome.storage.local.remove('ytwash:resume:' + videoId);
-      closeSaveChooser();
+      closeSaveChooser(list);
       return;
     }
     await new Promise(resolve => setTimeout(resolve, 100));
   }
-  closeSaveChooser();
+  closeSaveChooser(list);
 }
 export function clearCompletedVideo(): Promise<void> {
   if (removal) return removal;

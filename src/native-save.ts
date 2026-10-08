@@ -16,18 +16,26 @@ export function saveControls(): HTMLElement[] {
     'ytd-watch-metadata button, ytd-menu-service-item-renderer, ytd-menu-navigation-item-renderer, yt-list-item-view-model'
   )].filter(node => node.getClientRects().length > 0 && saveLabel.test(controlLabel(node)));
 }
-export function watchLaterCheckbox(): HTMLElement | null {
+export function watchLaterCheckbox(): HTMLElement | null { return playlistCheckbox('WL'); }
+function playlistCheckbox(list: string): HTMLElement | null {
+  const panelTitle = document.querySelector<HTMLElement>('ytd-playlist-panel-renderer #title')?.textContent?.trim();
+  const candidates: HTMLElement[] = [];
   const rows = document.querySelectorAll<HTMLElement>(
     'ytd-playlist-add-to-option-renderer, ytd-add-to-playlist-renderer, tp-yt-paper-item'
   );
   for (const row of rows) {
     if (!row.getClientRects().length) continue;
     const label = (row.querySelector('#label, #title, .title')?.textContent || row.textContent || '').trim();
-    if (!/^(watch later|ver mais tarde|assistir mais tarde)(\s|$)/i.test(label)) continue;
+    const explicitId = row.getAttribute('data-playlist-id');
+    const link = row.querySelector<HTMLAnchorElement>('a[href*="list="]');
+    const linkedId = link ? new URL(link.href, location.origin).searchParams.get('list') : null;
+    const matches = list === 'WL' ? /^(watch later|ver mais tarde|assistir mais tarde)(\s|$)/i.test(label) :
+      explicitId === list || linkedId === list || (!!panelTitle && label === panelTitle);
+    if (!matches) continue;
     const checkbox = row.querySelector<HTMLElement>('[role="checkbox"], tp-yt-paper-checkbox, input[type="checkbox"]');
-    if (checkbox?.getClientRects().length) return checkbox;
+    if (checkbox?.getClientRects().length && !candidates.includes(checkbox)) candidates.push(checkbox);
   }
-  return null;
+  return candidates.length === 1 ? candidates[0] : null;
 }
 export function checked(target: HTMLElement): boolean | null {
   if (target instanceof HTMLInputElement) return target.indeterminate ? null : target.checked;
@@ -37,17 +45,18 @@ export function checked(target: HTMLElement): boolean | null {
   if (target.hasAttribute('checked')) return true;
   return null;
 }
-export async function waitForWatchLater(id: string): Promise<HTMLElement | null> {
+export async function waitForWatchLater(id: string): Promise<HTMLElement | null> { return waitForPlaylist(id, 'WL'); }
+async function waitForPlaylist(id: string, list: string): Promise<HTMLElement | null> {
   for (let attempt = 0; attempt < 30 && watchId() === id; attempt++) {
-    const checkbox = watchLaterCheckbox();
+    const checkbox = playlistCheckbox(list);
     if (checkbox) return checkbox;
     await new Promise(resolve => setTimeout(resolve, 100));
   }
   return null;
 }
-export async function openSaveChooser(id: string): Promise<HTMLElement | null> {
+export async function openSaveChooser(id: string, list = 'WL'): Promise<HTMLElement | null> {
   if (watchId() !== id) return null;
-  const existing = watchLaterCheckbox();
+  const existing = playlistCheckbox(list);
   if (existing) return existing;
   let control = saveControls()[0];
   if (!control) {
@@ -66,10 +75,10 @@ export async function openSaveChooser(id: string): Promise<HTMLElement | null> {
   if (!control || watchId() !== id) return null;
   // Synthetic native clicks are deliberately not intercepted by enhanced Save.
   control.click();
-  return waitForWatchLater(id);
+  return waitForPlaylist(id, list);
 }
-export function closeSaveChooser(): void {
-  const checkbox = watchLaterCheckbox();
+export function closeSaveChooser(list = 'WL'): void {
+  const checkbox = playlistCheckbox(list);
   const dialog = checkbox?.closest('ytd-add-to-playlist-renderer, tp-yt-paper-dialog, ytd-popup-container');
   const close = dialog?.querySelector<HTMLElement>('button[aria-label="Close"], button[aria-label="Fechar"], #close-button button');
   close?.click();

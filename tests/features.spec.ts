@@ -533,41 +533,46 @@ test('partial sidebar preserves stored order and incorporates newly loaded rows 
   } finally { await context.close(); }
 });
 
-for (const enabled of [false, true]) {
-  test(`completed grouped video clears Watch Later before advancing only when enabled (${enabled})`, async () => {
+for (const {enabled, list} of [{enabled:false,list:'WL'}, {enabled:true,list:'WL'}, {enabled:true,list:'PL_cleanup'}]) {
+  test(`completed grouped video clears ${list} before advancing only when enabled (${enabled})`, async () => {
     const { context, page } = await fixture();
     try {
       await page.goto('https://www.youtube.com/watch?v=' + FIRST);
       const options = await openOptions(context);
       await options.locator('[data-key="ytwash:group-by-creator"]').check();
       if (enabled) await options.locator('[data-key="ytwash:auto-remove-completed"]').check();
-      await options.evaluate(async () => chrome.storage.local.set({
-        'ytwash:playlist:WL': {indexedAt: Date.now(), entries:[
+      await options.evaluate(async list => chrome.storage.local.set({
+        ['ytwash:playlist:' + list]: {indexedAt: Date.now(), entries:[
           {id:'abcdefghijk',creator:'Creator',key:'creator'},
           {id:'lmnopqrstuv',creator:'Creator',key:'creator'}]},
         'ytwash:resume:abcdefghijk': {seconds:12,savedAt:Date.now()}
-      }));
-      await page.goto('https://www.youtube.com/watch?v=' + FIRST + '&list=WL');
+      }), list);
+      await page.goto('https://www.youtube.com/watch?v=' + FIRST + '&list=' + list);
       await expect.poll(() => page.evaluate(() => !!sessionStorage.getItem('ytwash:creator-queue:v1'))).toBe(true);
-      await page.evaluate(() => {
+      await page.evaluate(list => {
+        if (list !== 'WL') {
+          const panel = document.createElement('ytd-playlist-panel-renderer');
+          panel.innerHTML = '<span id="title">My playlist</span>';
+          document.body.append(panel);
+        }
         const picker = document.createElement('ytd-add-to-playlist-renderer');
-        picker.innerHTML = '<span id="label">Watch Later</span><input type="checkbox" checked>';
+        picker.innerHTML = '<span id="label">' + (list === 'WL' ? 'Watch Later' : 'My playlist') + '</span><input type="checkbox" checked>';
         picker.querySelector('input')!.addEventListener('change', () => {
           // Simulate an asynchronous native membership update.
           picker.querySelector('input')!.checked = true;
           setTimeout(() => { picker.querySelector('input')!.checked = false; }, 400);
         });
         document.body.append(picker);
-      });
+      }, list);
       await expect.poll(() => page.locator('video').evaluate((v: HTMLVideoElement) => v.readyState >= 2)).toBe(true);
       await page.locator('video').evaluate(async (v: HTMLVideoElement) => { v.muted=true; await v.play(); });
       await expect.poll(() => page.locator('video').evaluate((v: HTMLVideoElement) => v.currentTime), {timeout:12000}).toBeGreaterThan(19);
       await page.locator('video').evaluate((v: HTMLVideoElement) => v.dispatchEvent(new Event('ended')));
-      await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + SECOND + '&list=WL', {timeout:12000});
-      const stored = await options.evaluate(async () => {
-        const data = await chrome.storage.local.get(['ytwash:playlist:WL','ytwash:resume:abcdefghijk']);
-        return {ids:data['ytwash:playlist:WL'].entries.map((e: {id:string}) => e.id), resume:!!data['ytwash:resume:abcdefghijk']};
-      });
+      await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + SECOND + '&list=' + list, {timeout:12000});
+      const stored = await options.evaluate(async list => {
+        const data = await chrome.storage.local.get(['ytwash:playlist:' + list,'ytwash:resume:abcdefghijk']);
+        return {ids:data['ytwash:playlist:' + list].entries.map((e: {id:string}) => e.id), resume:!!data['ytwash:resume:abcdefghijk']};
+      }, list);
       expect(stored).toEqual(enabled ? {ids:[SECOND],resume:false} : {ids:[FIRST,SECOND],resume:true});
     } finally { await context.close(); }
   });
