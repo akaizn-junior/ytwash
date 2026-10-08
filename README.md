@@ -1,6 +1,6 @@
 # YTWash
 
-**Watch it. Clear it.**
+**watch it. clear it.**
 
 YTWash makes YouTube's **Watch Later** playlist easier to browse and finish. Find videos from the same creator, play them in sequence, and pick up where you left off—all within YouTube.
 
