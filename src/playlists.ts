@@ -1,8 +1,8 @@
 /** Local indexes of visible native playlist rows, isolated by playlist ID. */
 export type PlaylistEntry = { id: string; creator: string; key: string };
 export type PlaylistIndex = { entries: PlaylistEntry[]; indexedAt: number };
-export function creatorOrder(entries: PlaylistEntry[]): PlaylistEntry[] {
-  const groups = new Map<string, PlaylistEntry[]>();
+export function creatorOrder<T extends PlaylistEntry>(entries: T[]): T[] {
+  const groups = new Map<string, T[]>();
   for (const entry of entries) groups.set(entry.key, [...(groups.get(entry.key) || []), entry]);
   return [...groups.values()].filter(group => group.length > 1).flat()
     .concat([...groups.values()].filter(group => group.length === 1).flat());

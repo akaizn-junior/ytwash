@@ -54,7 +54,7 @@ test('Watch Later stays native until grouping is requested', async () => {
     await expect(page.locator('.ytwash-native-group')).toHaveCount(0);
     const settings = await openOptions(context);
     await settings.locator('[data-key="ytwash:group-by-creator"]').check();
-    await expect(page.locator('.ytwash-native-group ytd-playlist-video-renderer')).toHaveCount(2, { timeout: 15000 });
+    await expect(page.locator('.ytwash-grouped-row')).toHaveCount(2, { timeout: 15000 });
     await page.locator('.ytwash-native-group a#video-title').first().click();
     await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + FIRST + '&list=WL');
     await expect(page.locator('#ytwash-playback-control')).toHaveCount(0);
@@ -404,5 +404,46 @@ test('direct playlist startup groups loaded sidebar videos without a prior index
     )).toBe(3);
     await page.locator('video').evaluate((v: HTMLVideoElement) => v.dispatchEvent(new Event('ended')));
     await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + THIRD + '&list=PL_sidebar', {timeout:12000});
+  } finally { await context.close(); }
+});
+
+test('grouping leaves native renderer lifecycle and continuation placement intact', async () => {
+  const { context, page } = await fixture(interleaved);
+  try {
+    await page.goto('https://www.youtube.com/playlist?list=PL_grouped');
+    await page.evaluate(() => {
+      (window as any).__disconnects = 0;
+      customElements.define('ytd-playlist-video-renderer', class extends HTMLElement {
+        disconnectedCallback() { (window as any).__disconnects++; }
+      });
+      const sentinel = document.createElement('ytd-continuation-item-renderer');
+      sentinel.id = 'continuation';
+      document.body.append(sentinel);
+      (window as any).__nativeRows = [...document.querySelectorAll('ytd-playlist-video-renderer')];
+    });
+    const options = await openOptions(context);
+    await options.locator('[data-key="ytwash:group-by-creator"]').check();
+    await expect(page.locator('.ytwash-native-group')).toHaveCount(2);
+    await page.evaluate(() => {
+      const sentinel = document.querySelector('#continuation')!;
+      const row = document.createElement('ytd-playlist-video-renderer');
+      row.innerHTML = '<a id="video-title" href="/watch?v=newvideo001">New</a><ytd-channel-name><a href="/channel/CreatorA">Creator A</a></ytd-channel-name>';
+      sentinel.before(row);
+      for (let i = 0; i < 20; i++) {
+        const status = document.createElement('span');
+        document.body.append(status);
+        status.remove();
+      }
+    });
+    await expect(page.locator('.ytwash-grouped-row')).toHaveCount(5);
+    expect(await page.evaluate(() => ({
+      disconnects: (window as any).__disconnects,
+      nativeOrder: (window as any).__nativeRows.every((row: Element, i: number) => document.querySelectorAll('ytd-playlist-video-renderer')[i] === row),
+      sentinelLast: document.body.lastElementChild?.id === 'continuation',
+      rows: document.querySelectorAll('ytd-playlist-video-renderer').length,
+    }))).toEqual({disconnects: 0, nativeOrder: true, sentinelLast: true, rows: 5});
+    await options.locator('[data-key="ytwash:group-by-creator"]').uncheck();
+    await expect(page.locator('.ytwash-grouped-row')).toHaveCount(0);
+    expect(await page.evaluate(() => (window as any).__disconnects)).toBe(0);
   } finally { await context.close(); }
 });

@@ -74,8 +74,8 @@ try {
   await driver.close();
   await driver.switchTo().window(playlistWindow);
   const group = await driver.wait(until.elementLocated(By.css('.ytwash-native-group')), 15000);
-  assert.equal(await group.getAttribute('aria-label'), 'Example Creator · 2 videos');
-  assert.equal((await driver.findElements(By.css('.ytwash-native-group ytd-playlist-video-renderer'))).length, 2);
+  assert.equal(await group.getAttribute('data-ytwash-heading'), 'Example Creator · 2 videos');
+  assert.equal((await driver.findElements(By.css('.ytwash-grouped-row'))).length, 2);
   assert.equal((await driver.findElements(By.css('.ytwash-native-group button'))).length, 0);
   assert.equal((await driver.findElements(By.css('#ytwash-native-controls'))).length, 0);
   console.log('PASS Firefox: grouping starts on request');
