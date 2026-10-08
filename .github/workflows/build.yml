@@ -4,47 +4,66 @@ on:
     branches:
       - 'feature/**'
 jobs:
-  cross-browser:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install dependencies once
+      - name: Install dependencies
         run: npm install
-      - name: Typecheck once
+      - name: Typecheck
         run: npm run typecheck
-      - name: Build extension once
+      - name: Build extension
         run: npm run build
-      - name: Install browser test dependencies
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ytwash-extension
+          path: dist/
+          if-no-files-found: error
+
+  browsers:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox]
+    name: Test ${{ matrix.browser }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install
+      - uses: actions/download-artifact@v4
+        with:
+          name: ytwash-extension
+          path: dist/
+      - name: Install Chromium
+        if: matrix.browser == 'chromium'
         run: npx playwright install --with-deps chromium
       - uses: browser-actions/setup-firefox@v1
+        if: matrix.browser == 'firefox'
         with:
           firefox-version: latest
       - uses: browser-actions/setup-geckodriver@latest
-      - name: Install WebM generator
+        if: matrix.browser == 'firefox'
+      - name: Install FFmpeg
         run: sudo apt-get update -qq && sudo apt-get install -y ffmpeg
-      - name: Generate one shared WebM fixture
+      - name: Generate video fixture
         run: |
           mkdir -p tests/fixtures
           ffmpeg -loglevel error -f lavfi -i color=c=black:s=32x32:r=2 -t 120 -an -c:v libvpx -b:v 100k -g 1 -deadline realtime -cpu-used 8 -y tests/fixtures/mock-video.webm
-      - name: Test same dist in Chromium
-        id: chromium
-        run: npm run test:e2e
-      - name: Test same dist in Firefox
-        if: success() || failure()
-        run: npm run test:firefox
+      - name: Test browser
+        run: npm run test:${{ matrix.browser == 'chromium' && 'e2e' || 'firefox' }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ytwash-browser-test-results
+          name: ytwash-${{ matrix.browser }}-test-results
           path: |
             playwright-report/
             test-results/
           if-no-files-found: ignore
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: ytwash-extension
-          path: dist/
