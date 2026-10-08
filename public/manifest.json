@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "YTWash",
+  "version": "0.1.0",
+  "description": "Group YouTube Watch Later videos by creator and clear your backlog.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://www.youtube.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.youtube.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
