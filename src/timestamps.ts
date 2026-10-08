@@ -1,24 +1,18 @@
+import { preferences, preferencesReady } from './preferences';
+import { watchId, saveControls, waitForWatchLater, checked, closeSaveChooser } from './native-save';
 /** Persist explicit resume points locally; never write to YouTube's private APIs. */
 const KEY_PREFIX = 'ytwash:resume:';
-const BUTTON_ID = 'ytwash-save-position';
-const STATUS_ID = 'ytwash-resume-status';
+const ICON_CLASS = 'ytwash-save-lightning';
+let saving = false;
 type Position = { seconds: number; savedAt: number };
 let currentId = '';
 let activeVideo: HTMLVideoElement | null = null;
 let resumeApplied = false;
 let lastUrl = '';
-let retryTimer: number | undefined;
 
 function getId(): string | null {
   if (location.pathname !== '/watch') return null;
   return new URLSearchParams(location.search).get('v');
-}
-function formatTime(seconds: number): string {
-  const t = Math.max(0, Math.floor(seconds));
-  const h = Math.floor(t / 3600);
-  const m = Math.floor((t % 3600) / 60);
-  const s = t % 60;
-  return (h ? h + ':' + String(m).padStart(2, '0') : String(m)) + ':' + String(s).padStart(2, '0');
 }
 function load(id: string): Promise<Position | null> {
   return new Promise(resolve => {
@@ -38,51 +32,82 @@ function store(id: string, seconds: number): Promise<boolean> {
     });
   });
 }
-function setStatus(message: string): void {
-  const el = document.getElementById(STATUS_ID);
-  if (el) el.textContent = message;
-}
 function hasExplicitTime(): boolean {
   const params = new URLSearchParams(location.search);
   return params.has('t') || params.has('start') || params.has('time_continue');
 }
-function openNativeSaveMenu(): boolean {
-  // Only activate YouTube's own save control. User must confirm Watch Later in YouTube.
-  const area = document.querySelector('ytd-watch-metadata');
-  const nodes = area?.querySelectorAll<HTMLElement>('button, yt-button-view-model, ytd-button-renderer') ?? [];
-  for (const node of nodes) {
-    const label = (node.getAttribute('aria-label') || node.getAttribute('title') || node.textContent || '').trim();
-    if (!/^(save|guardar|salvar)(\b|$)/i.test(label)) continue;
-    const button = node.matches('button') ? node : node.querySelector<HTMLElement>('button');
-    if (button) { button.click(); return true; }
+async function saveCurrent(id: string, seconds: number): Promise<void> {
+  if (saving) return;
+  saving = true;
+  try {
+    await preferencesReady;
+    if (!preferences.enhancedSave || watchId() !== id) return;
+    // Let the trusted native Save click open its playlist chooser normally.
+    const checkbox = await waitForWatchLater(id);
+    if (!checkbox || watchId() !== id || !preferences.enhancedSave) return;
+    const membership = checked(checkbox);
+    if (membership === null) return;
+    if (!membership) {
+      checkbox.click();
+      // Require confirmation from the native control before storing a timestamp.
+      for (let attempt = 0; attempt < 20 && watchId() === id; attempt++) {
+        if (checked(checkbox) === true) break;
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+    if (watchId() !== id || checked(checkbox) !== true) return;
+    if (await store(id, seconds) && watchId() === id) closeSaveChooser();
+  } finally { saving = false; }
+}
+function decorateSave(): void {
+  const controls = new Set(preferences.enhancedSave && getId() ? saveControls() : []);
+  document.querySelectorAll<HTMLElement>('.' + ICON_CLASS).forEach(icon => {
+    if (!icon.parentElement || !controls.has(icon.parentElement)) icon.remove();
+  });
+  for (const control of controls) {
+    if (control.querySelector('.' + ICON_CLASS)) continue;
+    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    icon.classList.add(ICON_CLASS);
+    icon.setAttribute('viewBox', '0 0 24 24');
+    icon.setAttribute('aria-hidden', 'true');
+    icon.style.cssText = 'width:16px;height:16px;min-width:16px;margin-left:12px;vertical-align:middle;fill:currentColor;pointer-events:none';
+    const title = document.createElementNS(icon.namespaceURI, 'title');
+    title.textContent = 'YTWash: save to Watch Later at the current time';
+    const path = document.createElementNS(icon.namespaceURI, 'path');
+    path.setAttribute('d', 'M13 2 4 14h7l-1 8 10-13h-7l1-7z');
+    icon.append(title, path);
+    control.append(icon);
   }
-  return false;
 }
-async function saveCurrent(): Promise<void> {
-  const id = getId(), video = document.querySelector<HTMLVideoElement>('video.html5-main-video');
-  if (!id || !video || !Number.isFinite(video.currentTime)) { setStatus('Video not ready.'); return; }
-  const seconds = Math.floor(video.currentTime);
-  const saved = await store(id, seconds);
-  if (!saved) { setStatus('Could not save position.'); return; }
-  const opened = openNativeSaveMenu();
-  setStatus(opened
-    ? 'Saved ' + formatTime(seconds) + ' locally. Choose Watch Later in YouTube’s Save menu.'
-    : 'Saved ' + formatTime(seconds) + ' locally. Use YouTube’s Save button to add to Watch Later.');
-}
+document.addEventListener('click', event => {
+  if (!event.isTrusted || event.defaultPrevented || !preferences.enhancedSave || saving ||
+      !(event.target instanceof Element)) return;
+  const control = saveControls().find(node => node.contains(event.target as Node));
+  const id = getId();
+  const video = document.querySelector<HTMLVideoElement>('video.html5-main-video');
+  if (control && id && video && Number.isFinite(video.currentTime)) void saveCurrent(id, Math.floor(video.currentTime));
+}, true);
+let decorationScheduled = false;
+new MutationObserver(() => {
+  if (decorationScheduled) return;
+  decorationScheduled = true;
+  window.setTimeout(() => { decorationScheduled = false; decorateSave(); }, 100);
+}).observe(document.documentElement, { childList: true, subtree: true });
+void preferencesReady.then(decorateSave);
 async function applyResume(id: string, video: HTMLVideoElement): Promise<void> {
+  await preferencesReady;
+  if (!preferences.resume) return;
   const saved = await load(id);
   if (getId() !== id || activeVideo !== video || resumeApplied || !saved) return;
-  if (hasExplicitTime()) { setStatus('URL start time takes priority over saved position.'); return; }
+  if (hasExplicitTime()) return;
   const seek = (): void => {
-    if (getId() !== id || activeVideo !== video || resumeApplied || video.readyState < 1) return;
+    if (!preferences.resume || getId() !== id || activeVideo !== video || resumeApplied || video.readyState < 1) return;
     if (Number.isFinite(video.duration) && saved.seconds >= video.duration - 5) {
-      setStatus('Saved position is near the end; not resuming automatically.');
       resumeApplied = true; return;
     }
     if (saved.seconds < 1) { resumeApplied = true; return; }
     video.currentTime = saved.seconds;
     resumeApplied = true;
-    setStatus('Resumed at ' + formatTime(saved.seconds) + '.');
   };
   if (video.readyState >= 1) seek();
   else video.addEventListener('loadedmetadata', seek, { once: true });
@@ -92,7 +117,6 @@ async function mount(): Promise<void> {
   if (!id) {
     currentId = '';
     activeVideo = null;
-    document.getElementById(BUTTON_ID)?.parentElement?.remove();
     return;
   }
   const video = document.querySelector<HTMLVideoElement>('video.html5-main-video');
@@ -100,33 +124,17 @@ async function mount(): Promise<void> {
   const changed = currentId !== id || activeVideo !== video;
   if (changed) {
     currentId = id; activeVideo = video; resumeApplied = false;
-    document.getElementById(BUTTON_ID)?.parentElement?.remove();
-  }
-  const container = document.querySelector<HTMLElement>('ytd-watch-metadata #actions, ytd-watch-metadata #top-row');
-  if (container && !document.getElementById(BUTTON_ID)) {
-    const wrapper = document.createElement('div');
-    wrapper.style.cssText = 'display:flex;flex-direction:column;gap:4px;margin:8px;color:var(--yt-spec-text-primary,#eee);font:12px Arial,sans-serif;max-width:360px;';
-    const button = document.createElement('button');
-    button.id = BUTTON_ID;
-    button.type = 'button';
-    button.textContent = 'YTWash · Save at current time';
-    button.setAttribute('aria-label', 'Save current video timestamp for Watch Later');
-    button.style.cssText = 'background:var(--yt-spec-badge-chip-background,#333);border:0;border-radius:18px;color:inherit;padding:10px 14px;cursor:pointer;font:600 13px Arial,sans-serif;';
-    button.addEventListener('click', () => void saveCurrent());
-    const message = document.createElement('span'); message.id = STATUS_ID;
-    message.setAttribute('role', 'status');
-    wrapper.append(button, message);
-    container.append(wrapper);
   }
   if (changed) void applyResume(id, video);
 }
 function tick(): void {
   const key = location.pathname + location.search;
   if (key !== lastUrl) { lastUrl = key; currentId = ''; activeVideo = null; resumeApplied = false; }
+  decorateSave();
   void mount();
 }
 window.addEventListener('yt-navigate-finish', tick);
 window.addEventListener('popstate', tick);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
-retryTimer = window.setInterval(tick, 1500);
+window.setInterval(tick, 1500);
 tick();

@@ -31,34 +31,30 @@ Open [Watch Later](https://www.youtube.com/playlist?list=WL). The playlist stays
 
 YTWash then groups the videos currently loaded in the page. Click **Grouping on · Undo** to restore the original order. Grouping is a one-time action; if YouTube loads more videos afterward, turn grouping off and on again to include them.
 
-### Play one creator's videos in a row
+### Play videos in display order
 
-Expand a creator and select **Play this creator**. YTWash opens the first indexed video and advances to the next when playback ends.
+Click a video's native YouTube title or thumbnail in Watch Later. YTWash plays the remaining indexed videos in their displayed order. The queue lasts for the current browsing session.
 
-Use **Stop creator playback** on the video page to end the queue. The queue is temporary and applies to the current browsing session.
+### Save to Watch Later at the current time
 
-### Save your place in a video
+On a video page, open YouTube’s action menu and select **Save**. A small lightning icon to the right marks YTWash’s enhanced Save. It automatically selects Watch Later and saves the timestamp from the moment you clicked. Saving again updates the timestamp without removing a video already in Watch Later.
 
-On a YouTube video, select **YTWash · Save at current time**. Your playback position is saved in the extension's local browser storage.
+The next time you open that video in the same browser profile, YTWash resumes from your saved position. A start time explicitly included in the video URL takes priority. If YouTube’s Watch Later control cannot be found or its state is unclear, the native chooser stays available and no timestamp is saved.
 
-If YouTube's Save menu opens, choose **Watch Later** yourself. Saving a timestamp **does not automatically add a video to Watch Later**.
+### Configure YTWash
 
-The next time you open that video in the same browser profile, YTWash attempts to resume from your saved position. A start time explicitly included in the video URL takes priority.
+Click YTWash’s toolbar icon, or open its **Options** from your browser’s extension manager (`chrome://extensions`, `edge://extensions`, or Firefox’s `about:addons`). Preferences apply to open YouTube tabs and stay local to this browser:
 
-### Automatically remove completed videos (optional)
+- **Save to Watch Later at the current time** (on by default). Turn it off to restore YouTube’s regular Save chooser.
+- **Resume saved videos automatically** (on by default).
+- **Remove completed videos from Watch Later** (off by default). After natural playback ends and at least five seconds of playback have been detected, YTWash attempts removal using YouTube’s controls only when Watch Later membership is confirmed. It does not close the tab.
 
-On a video page, YTWash offers **Auto-remove from Watch Later after finishing (experimental)**.
-
-**This feature is off by default.** Enable it only if you want YTWash to attempt to remove a video after it ends naturally and at least five seconds of actual playback have been detected.
-
-YTWash uses YouTube's own controls and attempts removal **only when it can confirm that the video belongs to Watch Later**. If it cannot confirm membership, it leaves the playlist unchanged. Removal is not guaranteed; check Watch Later to verify the result.
-
-**For your first test, keep automatic removal disabled**, especially if your Watch Later playlist contains videos you want to preserve.
+YTWash adds no timestamp button or automatic-removal checkbox to the video page.
 
 ## What to expect from this alpha
 
 - YTWash works inside YouTube; it does not create or manage a separate playlist.
-- Creator grouping depends on videos YouTube has loaded into the page. Very large playlists may require **Index more**.
+- Creator grouping depends on videos YouTube has loaded into the page. For large playlists, load more videos in YouTube, then turn grouping off and on again.
 - Saved timestamps are local to the browser profile; they do not sync across devices.
 - Playback, resume, and playlist controls depend on YouTube's current interface and may stop working if YouTube changes it.
 - Automated Chromium and Firefox tests use simulated YouTube pages. Real, signed-in YouTube behavior still needs validation.
