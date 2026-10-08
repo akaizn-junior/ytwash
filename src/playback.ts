@@ -14,7 +14,7 @@ async function hydrateNativePlaylist(): Promise<void> {
   hydrating = source;
   try {
     await preferencesReady;
-    if (!preferences.groupByCreator || !preferences.groupPlayback) return;
+    if (!preferences.groupByCreator) return;
     const cached = await readPlaylist(list);
     const sidebar: PlaylistEntry[] = [];
     for (const row of document.querySelectorAll<HTMLElement>('ytd-playlist-panel-video-renderer')) {
@@ -29,7 +29,7 @@ async function hydrateNativePlaylist(): Promise<void> {
     if (!cached && sidebar.length) indexPlaylist(list, sidebar);
     const ordered = creatorOrder(entries).map(entry => entry.id);
     const index = ordered.indexOf(id);
-    if (location.href !== source || getQueue() || !preferences.groupByCreator || !preferences.groupPlayback || index < 0) return;
+    if (location.href !== source || getQueue() || !preferences.groupByCreator || index < 0) return;
     if (saveQueue({ creator: list, ids: [...new Set(ordered.slice(index))], index: 0 })) window.setTimeout(reconcilePlayback, 0);
   } finally { hydrating = ''; }
 }
@@ -63,14 +63,14 @@ async function navigateToVideo(id: string, originalUrl?: string): Promise<void> 
   const activeQueue = getQueue();
   if (!originalUrl && activeQueue) url.searchParams.set('list', activeQueue.creator);
   await preferencesReady;
-  if (preferences.resume && !['t', 'start', 'time_continue'].some(key => url.searchParams.has(key))) {
+  if (!['t', 'start', 'time_continue'].some(key => url.searchParams.has(key))) {
     const saved = await new Promise<number | null>(resolve => {
       chrome.storage.local.get('ytwash:resume:' + id, data => {
         const seconds = data['ytwash:resume:' + id]?.seconds;
         resolve(!chrome.runtime.lastError && Number.isFinite(seconds) && seconds >= 1 ? seconds : null);
       });
     });
-    if (preferences.resume && saved !== null) url.searchParams.set('t', Math.floor(saved) + 's');
+    if (saved !== null) url.searchParams.set('t', Math.floor(saved) + 's');
   }
   const queue = getQueue();
   if (location.href !== sourceLocation || !queue || queue.ids[queue.index] !== id) return;
@@ -86,7 +86,7 @@ function videoId(): string | null {
   return location.pathname === '/watch' ? new URLSearchParams(location.search).get('v') : null;
 }
 async function refreshQueue(queue: CreatorQueue, id: string): Promise<CreatorQueue> {
-  if (!preferences.groupByCreator || !preferences.groupPlayback) return queue;
+  if (!preferences.groupByCreator) return queue;
   const cached = await readPlaylist(queue.creator);
   const ids = cached ? [...new Set(creatorOrder(cached.entries).map(entry => entry.id))] : queue.ids;
   const index = ids.indexOf(id);
@@ -119,7 +119,7 @@ function ended(event: Event): void {
 document.addEventListener('click', event => {
   if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey ||
       event.shiftKey || event.altKey || !(event.target instanceof Element) ||
-      !preferences.groupByCreator || !preferences.groupPlayback) return;
+      !preferences.groupByCreator) return;
   const control = event.target.closest('.ytp-next-button, .ytp-prev-button');
   if (!control || !getQueue()) return;
   event.preventDefault();
@@ -152,7 +152,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
   const queue = getQueue(), id = videoId();
   if (queue && id && changes['ytwash:playlist:' + queue.creator]) void refreshQueue(queue, id);
-  if (![preferenceKeys.groupByCreator, preferenceKeys.groupPlayback].some(key => changes[key])) return;
+  if (![preferenceKeys.groupByCreator].some(key => changes[key])) return;
   stopCreatorPlayback();
   reconcilePlayback();
 });

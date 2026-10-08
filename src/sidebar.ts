@@ -91,7 +91,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && (changes[preferenceKeys.groupByCreator] || changes['ytwash:playlist:' + currentList])) schedule();
 });
 document.addEventListener('click', event => {
-  if (!preferences.groupByCreator || !preferences.groupPlayback || !currentList || event.defaultPrevented ||
+  if (!preferences.groupByCreator || !currentList || event.defaultPrevented ||
     event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || !(event.target instanceof Element)) return;
   const link = event.target.closest<HTMLAnchorElement>('a[href*="/watch"]');
   if (!link?.closest(selector)) return;

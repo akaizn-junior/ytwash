@@ -21,11 +21,8 @@
   <h1><img src="icons/icon-48.png" alt="" width="48" height="48" style="vertical-align:middle;background:#ff0033;border-radius:10px;margin-right:12px">YTWash</h1>
   <p>Your preferences stay in this browser. Changes apply to open YouTube tabs.</p>
   <fieldset disabled id="preferences">
-    <legend>Save and playback</legend>
+    <legend>Playlist preferences</legend>
     <label><input type="checkbox" data-key="ytwash:group-by-creator" data-default="false"><span>Group playlists by creator<small>Applies to Watch Later and other YouTube playlists. Group loaded videos by creator automatically. Turn off to restore YouTube’s original order.</small></span></label>
-    <label><input type="checkbox" data-key="ytwash:group-playback" data-default="true"><span>Use creator order for playlist playback<small>When grouping is enabled, native Play and Play all follow creator groups. Direct playlist starts use the locally indexed order or loaded sidebar entries. Videos not yet indexed retain YouTube’s native behavior.</small></span></label>
-    <label><input type="checkbox" data-key="ytwash:enhanced-save" data-default="true"><span>Save to Watch Later at the current time<small>A lightning icon marks YouTube’s Save option. Save adds the video to Watch Later and remembers where you stopped. Turn this off to use YouTube’s regular playlist chooser.</small></span></label>
-    <label><input type="checkbox" data-key="ytwash:resume-enabled" data-default="true"><span>Resume saved videos automatically<small>Continue from your saved timestamp. A start time in the video URL takes priority.</small></span></label>
     <label><input type="checkbox" data-key="ytwash:auto-remove-completed" data-default="false"><span>Remove completed videos from Watch Later<small>Off by default. After a video finishes naturally, remove it only if Watch Later membership can be confirmed. This does not close the video tab.</small></span></label>
   </fieldset>
   <p id="status" role="status" aria-live="polite"></p>
