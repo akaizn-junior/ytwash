@@ -46,19 +46,20 @@ try {
     .setFirefoxOptions(new firefox.Options().addArguments('-headless')).build();
   await driver.installAddon(addon, true);
   await driver.get(origin + '/playlist?list=WL');
-  const groups = await driver.wait(until.elementLocated(By.css('#ytwash-creator-groups')), 15000);
-  await driver.wait(async () => (await groups.getText()).includes('2 indexed videos'), 15000);
-  assert.match(await groups.getText(), /Example Creator · 2 videos/);
-  await driver.findElement(By.css('#ytwash-creator-groups summary')).click();
-  assert.equal((await driver.findElements(By.css('#ytwash-creator-groups button[aria-label="Play all indexed Watch Later videos from Example Creator"]'))).length, 1);
-  const search = await driver.findElement(By.css('#ytwash-search'));
-  await search.sendKeys('Second video');
-  await driver.wait(async () => (await driver.findElements(By.css('#ytwash-creator-groups .yw-item'))).length === 1, 8000);
-  console.log('PASS Firefox: creator grouping and search');
+  const controls = await driver.wait(until.elementLocated(By.css('#ytwash-native-controls')), 15000);
+  await driver.wait(async () => (await controls.getText()).includes('Group by creator (1)'), 15000);
+  const groups = await driver.findElements(By.css('.ytwash-native-group'));
+  assert.equal(groups.length, 1, 'Only creators with two or more videos are grouped');
+  assert.match(await groups[0].getText(), /Example Creator · 2 videos/);
+  assert.equal((await driver.findElements(By.css('ytd-playlist-video-renderer'))).length, 2, 'Native playlist rows retained');
+  const groupToggle = await driver.findElement(By.css('.ytwash-native-group button[aria-expanded]'));
+  await groupToggle.click();
+  await driver.wait(async () => (await driver.findElements(By.css('ytd-playlist-video-renderer:not([style*="display: none"])'))).length === 0, 8000);
+  await groupToggle.click();
+  await driver.wait(async () => (await driver.findElements(By.css('ytd-playlist-video-renderer:not([style*="display: none"])'))).length === 2, 8000);
+  console.log('PASS Firefox: native creator grouping, toggle, and original rows');
 
-  // Search input is replaced during rerender. Update it inside the page, not via stale WebElement.
-  await driver.executeScript("const input=document.getElementById('ytwash-search');input.value='';input.dispatchEvent(new Event('input',{bubbles:true}))");
-  const play = By.css('#ytwash-creator-groups button[aria-label="Play all indexed Watch Later videos from Example Creator"]');
+  const play = By.css('.ytwash-native-group button[aria-label="Play all indexed Watch Later videos from Example Creator"]');
   await driver.findElement(play).click();
   await driver.wait(until.urlContains('/watch?v=' + first), 12000);
   await driver.wait(until.elementLocated(By.css('#ytwash-playback-label')), 12000);
