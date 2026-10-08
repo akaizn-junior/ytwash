@@ -39,12 +39,14 @@ function mount(): void {
     previous = active.currentTime;
   }, options);
   active.addEventListener('seeking', () => { previous = -1; }, options);
-  active.addEventListener('ended', () => {
-    if (seconds < 5 || new URLSearchParams(location.search).get('v') !== id) return;
-    chrome.storage.local.set({ ['ytwash:watched:' + id]: true });
-    chrome.storage.local.remove('ytwash:later:' + id);
-  }, { ...options, capture: true });
 }
+// Run before native/player capture listeners can stop the ended event.
+document.addEventListener('ended', event => {
+  if (event.target !== video || seconds < 5 || location.pathname !== '/watch' ||
+      new URLSearchParams(location.search).get('v') !== current) return;
+  chrome.storage.local.set({ ['ytwash:watched:' + current]: true });
+  chrome.storage.local.remove('ytwash:later:' + current);
+}, true);
 window.addEventListener('yt-navigate-finish', mount);
 window.setInterval(mount, 1500);
 mount();
