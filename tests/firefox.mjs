@@ -67,6 +67,7 @@ try {
   const playlistWindow = await driver.getWindowHandle();
   const settingsWindow = await driver.wait(async () => (await driver.getAllWindowHandles()).find(h => h !== playlistWindow), 10000);
   await driver.switchTo().window(settingsWindow);
+  await driver.wait(until.elementLocated(By.css('#preferences')), 10000);
   await driver.wait(until.elementIsEnabled(await driver.findElement(By.css('#preferences'))),10000);
   await driver.findElement(By.css('[data-key="ytwash:group-by-creator"]')).click();
   await driver.wait(async () => (await driver.findElement(By.css('#status')).getText()) === 'Preferences saved.',5000);
@@ -87,6 +88,7 @@ try {
   const optionsWindow = await driver.wait(async () =>
     (await driver.getAllWindowHandles()).find(handle => handle !== originalWindow), 10000);
   await driver.switchTo().window(optionsWindow);
+  await driver.wait(until.elementLocated(By.css('#preferences')), 10000);
   await driver.wait(until.elementIsEnabled(await driver.findElement(By.css('#preferences'))), 10000);
   const cleanup = await driver.findElement(By.css('[data-key="ytwash:auto-remove-completed"]'));
   assert.equal(await cleanup.isSelected(), false);
