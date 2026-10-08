@@ -1,33 +1,47 @@
-name: Build and test extension
+name: Build once and test browsers
 on: [push, pull_request]
 jobs:
-  build:
+  cross-browser:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install
-      - run: npm run typecheck
-      - run: npm run build
-      - run: npx playwright install --with-deps chromium
-      - name: Install FFmpeg
+      - name: Install dependencies once
+        run: npm install
+      - name: Typecheck once
+        run: npm run typecheck
+      - name: Build extension once
+        run: npm run build
+      - name: Install browser test dependencies
+        run: npx playwright install --with-deps chromium
+      - uses: browser-actions/setup-firefox@v1
+        with:
+          firefox-version: latest
+      - uses: browser-actions/setup-geckodriver@latest
+      - name: Install WebM generator
         run: sudo apt-get update -qq && sudo apt-get install -y ffmpeg
-      - name: Generate deterministic playable media fixture
+      - name: Generate one shared WebM fixture
         run: |
           mkdir -p tests/fixtures
           ffmpeg -loglevel error -f lavfi -i color=c=black:s=32x32:r=2 -t 120 -an -c:v libvpx -b:v 100k -g 1 -deadline realtime -cpu-used 8 -y tests/fixtures/mock-video.webm
-      - run: npm run test:e2e
+      - name: Test same dist in Chromium
+        id: chromium
+        run: npm run test:e2e
+      - name: Test same dist in Firefox
+        if: success() || failure()
+        run: npm run test:firefox
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ytwash-playwright-results
+          name: ytwash-browser-test-results
           path: |
             playwright-report/
             test-results/
           if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: ytwash-extension
           path: dist/
