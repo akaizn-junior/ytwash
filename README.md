@@ -6,7 +6,7 @@
 <p align="center"><strong>watch it. clear it.</strong></p>
 <p align="center">Save your place. Watch playlists by creator. Clear finished videos automatically.</p>
 <p align="center">
-  <a href="https://github.com/akaizn-junior/ytwash/releases">Download the alpha</a> ·
+  <a href="https://github.com/akaizn-junior/ytwash/releases/tag/v0.1.0-beta.1">Download the beta</a> ·
   <a href="https://akaizn-junior.github.io/ytwash/">Website</a> ·
   <a href="https://github.com/akaizn-junior/ytwash/issues">Get help</a>
 </p>
@@ -30,7 +30,7 @@ The `publishing-assets` ZIP contains graphics, not the extension. “Source code
 
 **Chrome / Edge:** Extract the ZIP into a folder you will keep. Open `chrome://extensions` or `edge://extensions`, enable **Developer mode**, choose **Load unpacked**, and select the folder containing `manifest.json`. Refresh your YouTube tabs.
 
-**Firefox:** Extract the Firefox ZIP. Open `about:debugging#/runtime/this-firefox`, choose **Load Temporary Add-on**, and select `manifest.json`. This unsigned alpha is for temporary testing; Firefox removes it when the browser closes.
+**Firefox:** Extract the Firefox ZIP. Open `about:debugging#/runtime/this-firefox`, choose **Load Temporary Add-on**, and select `manifest.json`. This unsigned beta is for temporary testing; Firefox removes it when the browser closes.
 
 **Update:** Extract the new browser ZIP over your existing extension folder, reload YTWash in your browser’s extension manager, and refresh YouTube. Keep the same installation to retain local settings and saved positions. For Firefox, reload or re-add the temporary add-on.
 
