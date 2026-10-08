@@ -1,3 +1,4 @@
+import './timestamps';
 
 /** YTWash creator grouping. A virtual index: native playlist items are never moved or modified. */
 const VIDEO_SELECTOR = 'ytd-playlist-video-renderer';
