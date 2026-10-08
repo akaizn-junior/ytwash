@@ -65,3 +65,30 @@ test('rotates local and indexed videos, skips completed videos, and opens a safe
   h.data['ytwash:reminder-video'] = 'https://evil.test';
   h.events.click('ytwash:watch-later'); await h.flush(); assert.equal(h.tabs.length, 1);
 });
+
+test('local saves work without playlist membership; completion requires playback and saving again requeues', () => {
+  const data = {}, handlers = {}, documentHandlers = {};
+  const video = { paused: false, seeking: false, currentTime: 0,
+    addEventListener: (name, handler) => { handlers[name] = handler; } };
+  const button = { textContent: '' };
+  const context = createContext({ console, AbortController, URLSearchParams,
+    location: { pathname: '/watch', search: '?v=abcdefghijk' },
+    window: { addEventListener() {}, setInterval() {} },
+    document: { title: 'Local video - YouTube', getElementById: () => button,
+      querySelector: selector => selector === 'video.html5-main-video' ? video : null,
+      addEventListener: (name, handler) => { documentHandlers[name] = handler; } },
+    chrome: { storage: { local: { set: values => Object.assign(data, values), remove: key => { delete data[key]; } } } },
+  });
+  const queue = stripTypeScriptTypes(readFileSync('src/reminder-queue.ts', 'utf8')).replace('export function', 'function');
+  runInContext(queue, context);
+  runInContext("saveForLater('abcdefghijk')", context);
+  assert.equal(data['ytwash:later:abcdefghijk'].title, 'Local video');
+  documentHandlers.ended({ target: video }); assert.equal(data['ytwash:watched:abcdefghijk'], false);
+  for (let time = 0; time <= 6; time++) { video.currentTime = time; handlers.timeupdate(); }
+  documentHandlers.ended({ target: video });
+  assert.equal(data['ytwash:watched:abcdefghijk'], true);
+  assert.equal(data['ytwash:later:abcdefghijk'], undefined);
+  runInContext("saveForLater('abcdefghijk')", context);
+  assert.equal(data['ytwash:watched:abcdefghijk'], false);
+  assert.ok(data['ytwash:later:abcdefghijk']);
+});
