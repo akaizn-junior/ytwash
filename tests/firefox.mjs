@@ -46,12 +46,16 @@ try {
     .setFirefoxOptions(new firefox.Options().addArguments('-headless')).build();
   await driver.installAddon(addon, true);
   await driver.get(origin + '/playlist?list=WL');
+  const grouping = await driver.wait(until.elementLocated(By.css('#ytwash-grouping-toggle')), 15000);
+  assert.equal(await grouping.getText(), 'Group by creator');
+  assert.equal((await driver.findElements(By.css('.ytwash-native-group'))).length, 0);
+  await grouping.click();
   const group = await driver.wait(until.elementLocated(By.css('.ytwash-native-group')), 15000);
   assert.equal(await group.getAttribute('aria-label'), 'Example Creator · 2 videos');
   assert.equal((await driver.findElements(By.css('.ytwash-native-group ytd-playlist-video-renderer'))).length, 2);
   assert.equal((await driver.findElements(By.css('.ytwash-native-group button'))).length, 0);
   assert.equal((await driver.findElements(By.css('#ytwash-native-controls'))).length, 0);
-  console.log('PASS Firefox: minimal native grouping without extra controls');
+  console.log('PASS Firefox: grouping starts on request');
   
   await driver.get(origin + '/watch?v=' + first);
   const toggle = await driver.wait(until.elementLocated(By.css('#ytwash-auto-remove-toggle')), 15000);
