@@ -56,10 +56,10 @@ test('Watch Later stays native until grouping is requested', async () => {
     await settings.locator('[data-key="ytwash:group-by-creator"]').check();
     await expect(page.locator('.ytwash-native-group ytd-playlist-video-renderer')).toHaveCount(2, { timeout: 15000 });
     await page.locator('.ytwash-native-group a#video-title').first().click();
-    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + FIRST);
+    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + FIRST + '&list=WL');
     await expect(page.locator('#ytwash-playback-control')).toHaveCount(0);
     await page.locator('video').evaluate((v: HTMLVideoElement) => v.dispatchEvent(new Event('ended')));
-    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + SECOND, { timeout: 12000 });
+    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + SECOND + '&list=WL', { timeout: 12000 });
   } finally { await context.close(); }
 });
 
@@ -198,18 +198,18 @@ test('Watch Later opens saved positions using YouTube timestamp URLs and respect
       'ytwash:resume:lmnopqrstuv': { seconds: 45, savedAt: Date.now() },
     }));
     await page.locator('a#video-title').first().click();
-    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + FIRST + '&t=35s');
+    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + FIRST + '&list=WL&t=35s');
     await page.locator('video').evaluate((v: HTMLVideoElement) => v.dispatchEvent(new Event('ended')));
-    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + SECOND + '&t=45s', { timeout: 12000 });
+    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + SECOND + '&list=WL&t=45s', { timeout: 12000 });
     await page.goto('https://www.youtube.com/playlist?list=WL');
     await page.locator('a#video-title').first().evaluate((a: HTMLAnchorElement) => { a.href += '&t=10s'; });
     await page.locator('a#video-title').first().click();
-    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + FIRST + '&t=10s');
+    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + FIRST + '&t=10s&list=WL');
     await options.locator('[data-key="ytwash:resume-enabled"]').uncheck();
     await expect(options.locator('#status')).toHaveText('Preferences saved.');
     await page.goto('https://www.youtube.com/playlist?list=WL');
     await page.locator('a#video-title').first().click();
-    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + FIRST);
+    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + FIRST + '&list=WL');
   } finally { await context.close(); }
 });
 
@@ -304,5 +304,31 @@ test('red Save lightning shares the native clickable hover container', async () 
     expect(await container.evaluate(node => node.matches(':hover'))).toBe(true);
     expect(await page.evaluate(({x,y}) => !!document.elementFromPoint(x,y)?.closest('tp-yt-paper-item'),
       {x:bounds.x + bounds.width / 2,y:bounds.y + bounds.height / 2})).toBe(true);
+  } finally { await context.close(); }
+});
+
+test('ordinary playlists group, retain their playlist context, and index separately', async () => {
+  const { context, page } = await fixture();
+  try {
+    const options = await openOptionsAfterNavigation();
+    async function openOptionsAfterNavigation() {
+      await page.goto('https://www.youtube.com/playlist?list=PL_example');
+      return openOptions(context);
+    }
+    await options.locator('[data-key="ytwash:group-by-creator"]').check();
+    await expect(page.locator('.ytwash-native-group')).toHaveCount(1);
+    await expect(page.locator('#ytwash-grouping-toggle')).toHaveCount(0);
+    await expect.poll(() => options.evaluate(async () =>
+      (await chrome.storage.local.get('ytwash:playlist:PL_example'))['ytwash:playlist:PL_example']?.entries.length
+    )).toBe(2);
+    await page.locator('a#video-title').first().click();
+    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + FIRST + '&list=PL_example');
+    await page.locator('video').evaluate((v: HTMLVideoElement) => v.dispatchEvent(new Event('ended')));
+    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + SECOND + '&list=PL_example', {timeout:12000});
+    await page.goto('https://www.youtube.com/playlist?list=WL');
+    await expect.poll(() => options.evaluate(async () => {
+      const values = await chrome.storage.local.get(['ytwash:playlist:PL_example', 'ytwash:playlist:WL']);
+      return !!values['ytwash:playlist:PL_example'] && !!values['ytwash:playlist:WL'];
+    })).toBe(true);
   } finally { await context.close(); }
 });

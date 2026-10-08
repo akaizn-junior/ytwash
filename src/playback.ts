@@ -31,6 +31,8 @@ export function stopCreatorPlayback(): void {
 async function navigateToVideo(id: string, originalUrl?: string): Promise<void> {
   const sourceLocation = location.href;
   const url = new URL(originalUrl || '/watch?v=' + encodeURIComponent(id), location.origin);
+  const activeQueue = getQueue();
+  if (!originalUrl && activeQueue) url.searchParams.set('list', activeQueue.creator);
   await preferencesReady;
   if (preferences.resume && !['t', 'start', 'time_continue'].some(key => url.searchParams.has(key))) {
     const saved = await new Promise<number | null>(resolve => {
