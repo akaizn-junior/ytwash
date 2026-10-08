@@ -17,8 +17,12 @@ const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 manifest.content_scripts[0].matches.push('http://127.0.0.1/*');
 manifest.host_permissions.push('http://127.0.0.1/*');
 writeFileSync(manifestPath, JSON.stringify(manifest));
-// Expose only the temporary add-on's options URL to the local test fixture.
-writeFileSync(join(bundle, 'content.js'), readFileSync(join(bundle, 'content.js'), 'utf8') + '\ndocument.documentElement.dataset.ytwashOptionsUrl = chrome.runtime.getURL(\"options.html\");');
+// Open options through the extension API, as the toolbar does. Current Firefox
+// deliberately rejects WebDriver navigation directly to moz-extension URLs.
+writeFileSync(join(bundle, 'content.js'), readFileSync(join(bundle, 'content.js'), 'utf8') +
+  '\ndocument.addEventListener("ytwash-test-open-options", () => chrome.runtime.sendMessage({openTestOptions:true}));');
+writeFileSync(join(bundle, 'background.js'), readFileSync(join(bundle, 'background.js'), 'utf8') +
+  '\nchrome.runtime.onMessage.addListener(message => { if(message.openTestOptions) void chrome.runtime.openOptionsPage(); });');
 const addon = join(temp, 'test-addon.zip');
 execFileSync('zip', ['-q', '-r', addon, '.'], { cwd: bundle });
 const playlist = '<!doctype html><html><body>' +
@@ -51,6 +55,9 @@ try {
   if (!address || typeof address === 'string') throw new Error('Fixture server did not bind');
   const origin = 'http://127.0.0.1:' + address.port;
   driver = await new Builder().forBrowser('firefox')
+    // Extension options are a privileged context in current Firefox. Grant the
+    // test driver explicit access only for this disposable browser profile.
+    .setFirefoxService(new firefox.ServiceBuilder().addArguments('--allow-system-access'))
     .setFirefoxOptions(new firefox.Options().addArguments('-headless')).build();
   await driver.installAddon(addon, true);
   await driver.get(origin + '/playlist?list=WL');
@@ -68,8 +75,11 @@ try {
   await driver.get(origin + '/watch?v=' + first);
   await driver.wait(until.elementLocated(By.css('.ytwash-save-lightning')), 15000);
   assert.equal((await driver.findElements(By.css('#ytwash-save-position, #ytwash-auto-remove-toggle'))).length, 0);
-  const optionsUrl = await driver.executeScript('return document.documentElement.dataset.ytwashOptionsUrl');
-  await driver.get(optionsUrl);
+  const originalWindow = await driver.getWindowHandle();
+  await driver.executeScript('document.dispatchEvent(new Event("ytwash-test-open-options"))');
+  const optionsWindow = await driver.wait(async () =>
+    (await driver.getAllWindowHandles()).find(handle => handle !== originalWindow), 10000);
+  await driver.switchTo().window(optionsWindow);
   await driver.wait(until.elementIsEnabled(await driver.findElement(By.css('#preferences'))), 10000);
   const cleanup = await driver.findElement(By.css('[data-key="ytwash:auto-remove-completed"]'));
   assert.equal(await cleanup.isSelected(), false);
