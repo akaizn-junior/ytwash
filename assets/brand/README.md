@@ -16,4 +16,4 @@ Recreate PNG exports with `PLAYWRIGHT_BROWSERS_PATH=/path/to/browsers node scrip
 
 The painter’s brush uses simple original SVG paths with broad bristle cuts for clarity at small sizes.
 
-`brush-wordmark.svg`: red lowercase ytwash on an original black dry-brush paint stroke, transparent exterior; lettering outlined for portable SVG rendering. DejaVu font license retained in FONT-LICENSE.txt.
+`brush-wordmark.svg`: white lowercase ytwash on an original red dry-brush paint stroke, transparent exterior; lettering outlined for portable SVG rendering. DejaVu font license retained in FONT-LICENSE.txt.
