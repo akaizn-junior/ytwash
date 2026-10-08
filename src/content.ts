@@ -121,6 +121,10 @@ function makeGroup(creator: string, key: string, entries: Entry[]): HTMLElement 
   box.dataset.creator = key;
   box.setAttribute('aria-label', creator + ' · ' + entries.length + ' videos');
   box.style.cssText = 'box-sizing:border-box;width:100%;margin:4px 0 10px;padding:4px 6px;border:0;background:transparent';
+  const heading = document.createElement('div');
+  heading.textContent = creator + ' · ' + entries.length + ' videos';
+  heading.style.cssText = 'font:600 14px Arial,sans-serif;color:var(--yt-spec-text-primary,#0f0f0f);margin:0 0 4px';
+  box.append(heading);
   return box;
 }
 
