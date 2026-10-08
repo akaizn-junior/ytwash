@@ -1,3 +1,4 @@
+import './cleanup';
 import './timestamps';
 
 /** YTWash creator grouping. A virtual index: native playlist items are never moved or modified. */
