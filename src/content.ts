@@ -1,5 +1,6 @@
 import { startCreatorPlayback } from './playback';
 import './cleanup';
+import './sidebar';
 import './timestamps';
 import { preferences, preferencesReady, preferenceKeys } from './preferences';
 import { playlistId, indexPlaylist, creatorOrder } from './playlists';

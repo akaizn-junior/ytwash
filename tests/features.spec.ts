@@ -407,6 +407,13 @@ test('direct playlist startup groups loaded sidebar videos without a prior index
         ).join('') + '</body>')
     }));
     await page.goto('https://www.youtube.com/watch?v=' + FIRST + '&list=PL_sidebar');
+    await expect(page.locator('.ytwash-sidebar-heading')).toHaveCount(2);
+    await expect(page.locator('.ytwash-sidebar-heading').last()).toHaveAttribute('data-ytwash-heading', 'Everything else');
+    await expect.poll(() => page.locator('ytd-playlist-panel-video-renderer').evaluateAll(rows =>
+      [...rows].sort((a,b) => Number((a as HTMLElement).style.order) - Number((b as HTMLElement).style.order))
+        .map(row => new URL(row.querySelector('a')!.href).searchParams.get('v'))
+    )).toEqual([FIRST, THIRD, SECOND]);
+
     await expect.poll(() => page.evaluate(() => sessionStorage.getItem('ytwash:creator-queue:v1'))).not.toBeNull();
     await expect.poll(() => options.evaluate(async () =>
       (await chrome.storage.local.get('ytwash:playlist:PL_sidebar'))['ytwash:playlist:PL_sidebar']?.entries.length
@@ -487,5 +494,44 @@ test('native Next follows persisted groups and includes newly indexed videos', a
     });
     await page.locator('.ytp-next-button').click();
     await expect(page).toHaveURL('https://www.youtube.com/watch?v=newvideo001&list=PL_grouped');
+  } finally { await context.close(); }
+});
+
+test('partial sidebar preserves stored order and incorporates newly loaded rows without moving native elements', async () => {
+  const { context, page } = await fixture();
+  try {
+    await page.goto('https://www.youtube.com/watch?v=' + FIRST);
+    const options = await openOptions(context);
+    await options.locator('[data-key="ytwash:group-by-creator"]').check();
+    await options.evaluate(async () => chrome.storage.local.set({
+      'ytwash:playlist:PL_partial': { indexedAt: Date.now(), entries: [
+        {id:'abcdefghijk',creator:'Creator A',key:'/channel/a'},
+        {id:'lmnopqrstuv',creator:'Creator B',key:'/channel/b'},
+        {id:'12345678901',creator:'Creator A',key:'/channel/a'},
+        {id:'98765432109',creator:'Creator B',key:'/channel/b'},
+      ] }
+    }));
+    await page.route('https://www.youtube.com/watch?*', route => route.fulfill({status:200,contentType:'text/html',body:
+      watch.replace('</body>', '<div id="panel">' + [[SECOND,'Creator B'],[FIRST,'Creator A']].map(([id,creator]) =>
+      `<ytd-playlist-panel-video-renderer><a href="/watch?v=${id}&list=PL_partial">Video</a><span id="byline">${creator}</span></ytd-playlist-panel-video-renderer>`).join('') + '</div></body>')
+    }));
+    await page.goto('https://www.youtube.com/watch?v=' + FIRST + '&list=PL_partial');
+    await expect(page.locator('.ytwash-sidebar-heading')).toHaveCount(2);
+    await page.evaluate(() => {
+      (window as any).__disconnects = 0;
+      customElements.define('ytd-playlist-panel-video-renderer', class extends HTMLElement {
+        disconnectedCallback() { (window as any).__disconnects++; }
+      });
+      const row = document.createElement('ytd-playlist-panel-video-renderer');
+      row.innerHTML = '<a href="/watch?v=newvideo001&list=PL_partial">New</a><span id="byline">Creator A</span>';
+      document.querySelector('#panel')!.append(row);
+    });
+    await expect.poll(() => options.evaluate(async () =>
+      (await chrome.storage.local.get('ytwash:playlist:PL_partial'))['ytwash:playlist:PL_partial']?.order
+    )).toEqual([FIRST, THIRD, 'newvideo001', SECOND, FOURTH]);
+    expect(await page.evaluate(() => (window as any).__disconnects)).toBe(0);
+    await options.locator('[data-key="ytwash:group-by-creator"]').uncheck();
+    await expect(page.locator('.ytwash-sidebar-heading')).toHaveCount(0);
+    expect(await page.locator('#panel').evaluate(panel => (panel as HTMLElement).style.display)).toBe('');
   } finally { await context.close(); }
 });
