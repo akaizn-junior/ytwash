@@ -259,3 +259,32 @@ test('plain-text Save keeps its lightning icon and persists time without a recog
     await expect(page.locator('#fake-picker')).toHaveCount(0);
   } finally { await context.close(); }
 });
+
+for (const display of ['flex', 'grid', 'block']) {
+  test(`Save lightning stays on the same row in ${display} layouts`, async () => {
+    const { context, page } = await fixture();
+    try {
+      await page.goto('https://www.youtube.com/watch?v=' + FIRST);
+      await page.locator('#native-save').evaluate((button, display) => {
+        const row = document.createElement('ytd-menu-service-item-renderer');
+        row.id = 'layout-save';
+        row.style.cssText = `display:${display};width:160px;box-sizing:border-box;padding:12px 16px;flex-wrap:wrap;grid-template-columns:1fr;gap:8px`;
+        row.innerHTML = '<yt-formatted-string style="display:block">Save</yt-formatted-string>';
+        button.replaceWith(row);
+      }, display);
+      const row = page.locator('#layout-save');
+      const label = await row.locator('yt-formatted-string').boundingBox();
+      await expect(row.locator('.ytwash-save-lightning')).toHaveCount(1);
+      const icon = await row.locator('.ytwash-save-lightning').boundingBox();
+      expect(label).not.toBeNull();
+      expect(icon).not.toBeNull();
+      expect(Math.abs(icon!.y + icon!.height / 2 - label!.y - label!.height / 2)).toBeLessThan(2);
+      expect(icon!.x).toBeGreaterThan(label!.x);
+      const options = await openOptions(context);
+      await options.locator('[data-key="ytwash:enhanced-save"]').uncheck();
+      await expect(row.locator('.ytwash-save-lightning')).toHaveCount(0);
+      expect(await row.evaluate(node => node.style.paddingRight)).toBe('16px');
+      expect(await row.evaluate(node => node.style.position)).toBe('');
+    } finally { await context.close(); }
+  });
+}

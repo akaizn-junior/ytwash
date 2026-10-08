@@ -3,6 +3,9 @@ import { watchId, saveControls, waitForWatchLater, checked, closeSaveChooser } f
 /** Persist explicit resume points locally; never write to YouTube's private APIs. */
 const KEY_PREFIX = 'ytwash:resume:';
 const ICON_CLASS = 'ytwash-save-lightning';
+const saveLayouts = new Map<HTMLElement, {
+  position: string; positionPriority: string; padding: string; paddingPriority: string; reservedPadding: string;
+}>();
 let saving = false;
 type Position = { seconds: number; savedAt: number };
 let currentId = '';
@@ -66,16 +69,32 @@ async function saveCurrent(id: string, seconds: number): Promise<void> {
 }
 function decorateSave(): void {
   const controls = new Set(preferences.enhancedSave && getId() ? saveControls() : []);
+  for (const [control, original] of saveLayouts) {
+    if (controls.has(control)) continue;
+    if (control.style.position === 'relative') control.style.setProperty('position', original.position, original.positionPriority);
+    if (control.style.paddingRight === original.reservedPadding) control.style.setProperty('padding-right', original.padding, original.paddingPriority);
+    saveLayouts.delete(control);
+  }
   document.querySelectorAll<HTMLElement>('.' + ICON_CLASS).forEach(icon => {
     if (!icon.parentElement || !controls.has(icon.parentElement)) icon.remove();
   });
   for (const control of controls) {
     if (control.querySelector('.' + ICON_CLASS)) continue;
+    const computed = getComputedStyle(control);
+    const inset = parseFloat(computed.paddingRight) || 0;
+    const reservedPadding = inset + 28 + 'px';
+    saveLayouts.set(control, {
+      position: control.style.position, positionPriority: control.style.getPropertyPriority('position'),
+      padding: control.style.paddingRight, paddingPriority: control.style.getPropertyPriority('padding-right'), reservedPadding,
+    });
+    if (computed.position === 'static') control.style.setProperty('position', 'relative', 'important');
+    control.style.setProperty('padding-right', reservedPadding, 'important');
     const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     icon.classList.add(ICON_CLASS);
     icon.setAttribute('viewBox', '0 0 24 24');
     icon.setAttribute('aria-hidden', 'true');
-    icon.style.cssText = 'width:16px;height:16px;min-width:16px;margin-left:12px;vertical-align:middle;fill:currentColor;pointer-events:none';
+    // Out of flow: never becomes another grid cell or wraps in a flex row.
+    icon.style.cssText = `position:absolute!important;right:${inset}px!important;top:50%!important;transform:translateY(-50%)!important;width:16px!important;height:16px!important;fill:currentColor;pointer-events:none`;
     const title = document.createElementNS(icon.namespaceURI, 'title');
     title.textContent = 'YTWash: save to Watch Later at the current time';
     const path = document.createElementNS(icon.namespaceURI, 'path');
