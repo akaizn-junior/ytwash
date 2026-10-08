@@ -13,8 +13,6 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
-    env:
-      RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v{0}', github.ref_name) }}
     permissions:
       contents: write
     steps:
@@ -24,13 +22,21 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install
+      - name: Resolve version tag
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "RELEASE_TAG=$GITHUB_REF_NAME" >> "$GITHUB_ENV"
+          else
+            echo "RELEASE_TAG=v${GITHUB_REF_NAME#release/}" >> "$GITHUB_ENV"
+          fi
       - name: Validate version matches tag
         run: |
           node -e '
             const pkg = require("./package.json");
             const manifest = require("./public/manifest.json");
             const tag = process.env.RELEASE_TAG;
-            if (tag !== "v" + pkg.version || pkg.version !== manifest.version) {
+            if (!new RegExp("^v" + pkg.version.replaceAll(".", "\\.") + "(?:-alpha\\.[0-9]+)?$").test(tag) || pkg.version !== manifest.version) {
               console.error("Tag, package.json, and extension manifest versions must match.");
               process.exit(1);
             }
