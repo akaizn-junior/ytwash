@@ -25,17 +25,11 @@ YTWash is not currently distributed through a browser extension store, so it mus
 
 ## What you can do
 
-### Find videos by creator
+### Group Watch Later videos by creator
 
-Open [Watch Later](https://www.youtube.com/playlist?list=WL). YTWash adds a **Group by creator** section above YouTube's original playlist.
+Open [Watch Later](https://www.youtube.com/playlist?list=WL). The playlist stays in YouTube's normal view until you click **Group by creator**.
 
-- Expand a creator to see their videos.
-- Search for a creator or video title.
-- Sort groups by number of videos, creator name, or recently indexed videos.
-- Choose **Index more** to scroll through the playlist and discover additional videos.
-- Use **Hide groups** when you want the regular YouTube view.
-
-YouTube loads playlist entries gradually. YTWash groups the videos it has detected, so the number shown may be smaller than your full Watch Later collection until more entries load. Your original playlist remains underneath the grouping view.
+YTWash then groups the videos currently loaded in the page. Click **Grouping on · Undo** to restore the original order. Grouping is a one-time action; if YouTube loads more videos afterward, turn grouping off and on again to include them.
 
 ### Play one creator's videos in a row
 

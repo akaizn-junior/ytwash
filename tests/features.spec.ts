@@ -39,16 +39,45 @@ async function fixture(): Promise<{ context: BrowserContext; page: Page }> {
   return { context, page };
 }
 
-test('Watch Later follows grouped playback order without extra controls', async () => {
+test('Watch Later stays native until grouping is requested', async () => {
   const { context, page } = await fixture();
   try {
     await page.goto('https://www.youtube.com/playlist?list=WL');
+    const grouping = page.locator('#ytwash-grouping-toggle');
+    await expect(grouping).toHaveText('Group by creator', { timeout: 15000 });
+    await expect(page.locator('.ytwash-native-group')).toHaveCount(0);
+    await grouping.click();
+    await expect(grouping).toHaveAttribute('aria-pressed', 'true');
     await expect(page.locator('.ytwash-native-group ytd-playlist-video-renderer')).toHaveCount(2, { timeout: 15000 });
     await page.locator('.ytwash-native-group a#video-title').first().click();
     await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + FIRST);
     await expect(page.locator('#ytwash-playback-control')).toHaveCount(0);
     await page.locator('video').evaluate((v: HTMLVideoElement) => v.dispatchEvent(new Event('ended')));
     await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + SECOND, { timeout: 12000 });
+  } finally { await context.close(); }
+});
+
+test('grouping is a one-time action and undo restores Watch Later', async () => {
+  const { context, page } = await fixture();
+  try {
+    await page.goto('https://www.youtube.com/playlist?list=WL');
+    const toggle = page.locator('#ytwash-grouping-toggle');
+    await expect(toggle).toHaveText('Group by creator', { timeout: 15000 });
+    await toggle.click();
+    await expect(page.locator('.ytwash-native-group')).toHaveCount(1);
+    await toggle.click();
+    await expect(toggle).toHaveText('Group by creator');
+    await expect(page.locator('.ytwash-native-group')).toHaveCount(0);
+    expect(await page.locator('ytd-playlist-video-renderer a#video-title').allTextContents())
+      .toEqual(['First video', 'Second video']);
+
+    // A later YouTube list update must not silently turn grouping back on.
+    await page.locator('body').evaluate(body => {
+      const row = document.createElement('ytd-playlist-video-renderer');
+      row.innerHTML = '<a id="video-title" href="/watch?v=12345678901">Third video</a><ytd-channel-name><a href="/channel/UCcreator1">Example Creator</a></ytd-channel-name>';
+      body.append(row);
+    });
+    await expect(page.locator('.ytwash-native-group')).toHaveCount(0);
   } finally { await context.close(); }
 });
 
