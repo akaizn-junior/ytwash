@@ -3,12 +3,18 @@ export function watchId(): string | null {
   return location.pathname === '/watch' ? new URLSearchParams(location.search).get('v') : null;
 }
 const saveLabel = /^(save|guardar|salvar)(\s|$)/i;
+function controlLabel(node: HTMLElement): string {
+  const label = node.getAttribute('aria-label') || node.querySelector('yt-formatted-string, .yt-list-item-view-model__title')?.textContent;
+  if (label) return label.trim();
+  // Our SVG title must not turn plain "Save" text into "SaveYTWash…".
+  const copy = node.cloneNode(true) as HTMLElement;
+  copy.querySelectorAll('.ytwash-save-lightning').forEach(icon => icon.remove());
+  return (copy.textContent || '').trim();
+}
 export function saveControls(): HTMLElement[] {
   return [...document.querySelectorAll<HTMLElement>(
     'ytd-watch-metadata button, ytd-menu-service-item-renderer, ytd-menu-navigation-item-renderer, yt-list-item-view-model'
-  )].filter(node => node.getClientRects().length > 0 && saveLabel.test(
-    (node.getAttribute('aria-label') || node.querySelector('yt-formatted-string, .yt-list-item-view-model__title')?.textContent || node.textContent || '').trim()
-  ));
+  )].filter(node => node.getClientRects().length > 0 && saveLabel.test(controlLabel(node)));
 }
 export function watchLaterCheckbox(): HTMLElement | null {
   const rows = document.querySelectorAll<HTMLElement>(

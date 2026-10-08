@@ -190,3 +190,101 @@ test('overflow menu Save receives one lightning icon and saves to Watch Later', 
     await expect(page.locator('#fake-picker input')).toBeChecked();
   } finally { await context.close(); }
 });
+
+test('Watch Later opens saved positions using YouTube timestamp URLs and respects explicit times', async () => {
+  const { context, page } = await fixture();
+  try {
+    await page.goto('https://www.youtube.com/playlist?list=WL');
+    const options = await openOptions(context);
+    await options.evaluate(() => chrome.storage.local.set({
+      'ytwash:resume:abcdefghijk': { seconds: 35, savedAt: Date.now() },
+      'ytwash:resume:lmnopqrstuv': { seconds: 45, savedAt: Date.now() },
+    }));
+    await page.locator('a#video-title').first().click();
+    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + FIRST + '&t=35s');
+    await page.locator('video').evaluate((v: HTMLVideoElement) => v.dispatchEvent(new Event('ended')));
+    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + SECOND + '&t=45s', { timeout: 12000 });
+    await page.goto('https://www.youtube.com/playlist?list=WL');
+    await page.locator('a#video-title').first().evaluate((a: HTMLAnchorElement) => { a.href += '&t=10s'; });
+    await page.locator('a#video-title').first().click();
+    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + FIRST + '&t=10s');
+    await options.locator('[data-key="ytwash:resume-enabled"]').uncheck();
+    await expect(options.locator('#status')).toHaveText('Preferences saved.');
+    await page.goto('https://www.youtube.com/playlist?list=WL');
+    await page.locator('a#video-title').first().click();
+    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + FIRST);
+  } finally { await context.close(); }
+});
+
+test('resume waits for replacement metadata when YouTube reuses the video element', async () => {
+  const { context, page } = await fixture();
+  try {
+    await page.goto('https://www.youtube.com/watch?v=' + FIRST);
+    const options = await openOptions(context);
+    await options.evaluate(() => chrome.storage.local.set({
+      'ytwash:resume:lmnopqrstuv': { seconds: 35, savedAt: Date.now() },
+    }));
+    await expect.poll(() => page.locator('video').evaluate((v: HTMLVideoElement) => v.readyState)).toBeGreaterThan(0);
+    await page.evaluate(() => {
+      history.pushState({}, '', '/watch?v=lmnopqrstuv');
+      window.dispatchEvent(new Event('yt-navigate-finish'));
+    });
+    await expect.poll(() => page.locator('video').evaluate((v: HTMLVideoElement) => v.currentTime)).toBe(35);
+    // YouTube replaces the source after the navigation event, resetting time.
+    await page.locator('video').evaluate((v: HTMLVideoElement) => v.load());
+    await expect.poll(() => page.locator('video').evaluate((v: HTMLVideoElement) => v.currentTime)).toBe(35);
+  } finally { await context.close(); }
+});
+
+test('plain-text Save keeps its lightning icon and persists time without a recognizable chooser', async () => {
+  const { context, page } = await fixture();
+  try {
+    await page.goto('https://www.youtube.com/watch?v=' + FIRST);
+    const options = await openOptions(context);
+    await page.locator('#native-save').evaluate(button => {
+      const plain = document.createElement('button');
+      plain.id = 'plain-save';
+      plain.textContent = 'Save';
+      button.replaceWith(plain);
+    });
+    await expect(page.locator('#plain-save .ytwash-save-lightning')).toHaveCount(1);
+    await expect.poll(() => page.locator('video').evaluate((v: HTMLVideoElement) => v.readyState)).toBeGreaterThan(0);
+    await page.locator('video').evaluate((v: HTMLVideoElement) => { v.currentTime = 25; });
+    await expect.poll(() => page.locator('video').evaluate((v: HTMLVideoElement) => v.currentTime)).toBe(25);
+    await page.locator('#plain-save').click();
+    await expect.poll(() => options.evaluate(async () =>
+      (await chrome.storage.local.get('ytwash:resume:abcdefghijk'))['ytwash:resume:abcdefghijk']?.seconds
+    )).toBe(25);
+    await expect(page.locator('#plain-save .ytwash-save-lightning')).toHaveCount(1);
+    await expect(page.locator('#fake-picker')).toHaveCount(0);
+  } finally { await context.close(); }
+});
+
+for (const display of ['flex', 'grid', 'block']) {
+  test(`Save lightning stays on the same row in ${display} layouts`, async () => {
+    const { context, page } = await fixture();
+    try {
+      await page.goto('https://www.youtube.com/watch?v=' + FIRST);
+      await page.locator('#native-save').evaluate((button, display) => {
+        const row = document.createElement('ytd-menu-service-item-renderer');
+        row.id = 'layout-save';
+        row.style.cssText = `display:${display};width:160px;box-sizing:border-box;padding:12px 16px;flex-wrap:wrap;grid-template-columns:1fr;gap:8px`;
+        row.innerHTML = '<yt-formatted-string style="display:block">Save</yt-formatted-string>';
+        button.replaceWith(row);
+      }, display);
+      const row = page.locator('#layout-save');
+      const label = await row.locator('yt-formatted-string').boundingBox();
+      await expect(row.locator('.ytwash-save-lightning')).toHaveCount(1);
+      const icon = await row.locator('.ytwash-save-lightning').boundingBox();
+      expect(label).not.toBeNull();
+      expect(icon).not.toBeNull();
+      expect(Math.abs(icon!.y + icon!.height / 2 - label!.y - label!.height / 2)).toBeLessThan(2);
+      expect(icon!.x).toBeGreaterThan(label!.x);
+      const options = await openOptions(context);
+      await options.locator('[data-key="ytwash:enhanced-save"]').uncheck();
+      await expect(row.locator('.ytwash-save-lightning')).toHaveCount(0);
+      expect(await row.evaluate(node => node.style.paddingRight)).toBe('16px');
+      expect(await row.evaluate(node => node.style.position)).toBe('');
+    } finally { await context.close(); }
+  });
+}

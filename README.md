@@ -39,7 +39,7 @@ Click a video's native YouTube title or thumbnail in Watch Later. YTWash plays t
 
 On a video page, open YouTube’s action menu and select **Save**. A small lightning icon to the right marks YTWash’s enhanced Save. It automatically selects Watch Later and saves the timestamp from the moment you clicked. Saving again updates the timestamp without removing a video already in Watch Later.
 
-The next time you open that video in the same browser profile, YTWash resumes from your saved position. A start time explicitly included in the video URL takes priority. If YouTube’s Watch Later control cannot be found or its state is unclear, the native chooser stays available and no timestamp is saved.
+The next time you open that video in the same browser profile, YTWash resumes from your saved position. Watch Later playback uses YouTube’s native timestamp URL for saved positions. A start time explicitly included in the video URL takes priority. Your timestamp is saved immediately. If YouTube’s Watch Later control cannot be found or its state is unclear, the native chooser stays available so you can add the video yourself.
 
 ### Configure YTWash
 

@@ -3,12 +3,16 @@ import { watchId, saveControls, waitForWatchLater, checked, closeSaveChooser } f
 /** Persist explicit resume points locally; never write to YouTube's private APIs. */
 const KEY_PREFIX = 'ytwash:resume:';
 const ICON_CLASS = 'ytwash-save-lightning';
+const saveLayouts = new Map<HTMLElement, {
+  position: string; positionPriority: string; padding: string; paddingPriority: string; reservedPadding: string;
+}>();
 let saving = false;
 type Position = { seconds: number; savedAt: number };
 let currentId = '';
 let activeVideo: HTMLVideoElement | null = null;
 let resumeApplied = false;
 let lastUrl = '';
+let resumeListeners: AbortController | null = null;
 
 function getId(): string | null {
   if (location.pathname !== '/watch') return null;
@@ -42,6 +46,10 @@ async function saveCurrent(id: string, seconds: number): Promise<void> {
   try {
     await preferencesReady;
     if (!preferences.enhancedSave || watchId() !== id) return;
+    // Persist the user's explicit Save action even when YouTube's chooser
+    // changes markup or cannot expose a confirmed Watch Later state.
+    if (!await store(id, seconds)) return;
+    if (watchId() !== id) return;
     // Let the trusted native Save click open its playlist chooser normally.
     const checkbox = await waitForWatchLater(id);
     if (!checkbox || watchId() !== id || !preferences.enhancedSave) return;
@@ -49,28 +57,44 @@ async function saveCurrent(id: string, seconds: number): Promise<void> {
     if (membership === null) return;
     if (!membership) {
       checkbox.click();
-      // Require confirmation from the native control before storing a timestamp.
+      // Confirm the native control changed before dismissing its chooser.
       for (let attempt = 0; attempt < 20 && watchId() === id; attempt++) {
         if (checked(checkbox) === true) break;
         await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
     if (watchId() !== id || checked(checkbox) !== true) return;
-    if (await store(id, seconds) && watchId() === id) closeSaveChooser();
+    closeSaveChooser();
   } finally { saving = false; }
 }
 function decorateSave(): void {
   const controls = new Set(preferences.enhancedSave && getId() ? saveControls() : []);
+  for (const [control, original] of saveLayouts) {
+    if (controls.has(control)) continue;
+    if (control.style.position === 'relative') control.style.setProperty('position', original.position, original.positionPriority);
+    if (control.style.paddingRight === original.reservedPadding) control.style.setProperty('padding-right', original.padding, original.paddingPriority);
+    saveLayouts.delete(control);
+  }
   document.querySelectorAll<HTMLElement>('.' + ICON_CLASS).forEach(icon => {
     if (!icon.parentElement || !controls.has(icon.parentElement)) icon.remove();
   });
   for (const control of controls) {
     if (control.querySelector('.' + ICON_CLASS)) continue;
+    const computed = getComputedStyle(control);
+    const inset = parseFloat(computed.paddingRight) || 0;
+    const reservedPadding = inset + 28 + 'px';
+    saveLayouts.set(control, {
+      position: control.style.position, positionPriority: control.style.getPropertyPriority('position'),
+      padding: control.style.paddingRight, paddingPriority: control.style.getPropertyPriority('padding-right'), reservedPadding,
+    });
+    if (computed.position === 'static') control.style.setProperty('position', 'relative', 'important');
+    control.style.setProperty('padding-right', reservedPadding, 'important');
     const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     icon.classList.add(ICON_CLASS);
     icon.setAttribute('viewBox', '0 0 24 24');
     icon.setAttribute('aria-hidden', 'true');
-    icon.style.cssText = 'width:16px;height:16px;min-width:16px;margin-left:12px;vertical-align:middle;fill:currentColor;pointer-events:none';
+    // Out of flow: never becomes another grid cell or wraps in a flex row.
+    icon.style.cssText = `position:absolute!important;right:${inset}px!important;top:50%!important;transform:translateY(-50%)!important;width:16px!important;height:16px!important;fill:currentColor;pointer-events:none`;
     const title = document.createElementNS(icon.namespaceURI, 'title');
     title.textContent = 'YTWash: save to Watch Later at the current time';
     const path = document.createElementNS(icon.namespaceURI, 'path');
@@ -109,12 +133,20 @@ async function applyResume(id: string, video: HTMLVideoElement): Promise<void> {
     video.currentTime = saved.seconds;
     resumeApplied = true;
   };
+  // YouTube reuses its video element during client-side navigation. Metadata
+  // for the previous video can still be present when navigation finishes.
+  const controller = resumeListeners;
+  video.addEventListener('loadedmetadata', () => {
+    if (getId() !== id || activeVideo !== video || hasExplicitTime()) return;
+    resumeApplied = false;
+    seek();
+  }, { signal: controller?.signal });
   if (video.readyState >= 1) seek();
-  else video.addEventListener('loadedmetadata', seek, { once: true });
 }
 async function mount(): Promise<void> {
   const id = getId();
   if (!id) {
+    resumeListeners?.abort();
     currentId = '';
     activeVideo = null;
     return;
@@ -123,6 +155,8 @@ async function mount(): Promise<void> {
   if (!video) return;
   const changed = currentId !== id || activeVideo !== video;
   if (changed) {
+    resumeListeners?.abort();
+    resumeListeners = new AbortController();
     currentId = id; activeVideo = video; resumeApplied = false;
   }
   if (changed) void applyResume(id, video);
