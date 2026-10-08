@@ -43,8 +43,7 @@ test('creator playback advances to the next indexed video after ended', async ()
   const { context, page } = await fixture();
   try {
     await page.goto('https://www.youtube.com/playlist?list=WL');
-    await expect(page.locator('#ytwash-creator-groups')).toContainText('2 indexed videos', { timeout: 15000 });
-    await page.locator('#ytwash-creator-groups summary').click();
+    await expect(page.locator('#ytwash-native-controls')).toContainText('Group by creator (1)', { timeout: 15000 });
     await page.getByRole('button', { name: 'Play all indexed Watch Later videos from Example Creator' }).click();
     await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + FIRST);
     await expect(page.locator('#ytwash-playback-label')).toContainText('1/2');
