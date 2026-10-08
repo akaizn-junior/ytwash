@@ -10,12 +10,9 @@ const playlist = '<!doctype html><html><body>' +
   '</body></html>';
 const watch = '<!doctype html><html><body>' +
   '<ytd-watch-metadata><div id="actions"><button id="native-save" aria-label="Save">Save</button></div></ytd-watch-metadata>' +
-  '<video class="html5-main-video"></video>' +
+  '<video class="html5-main-video" preload="auto" muted src="/fixtures/mock-video.mp4"></video>' +
   '<script>' +
   'const media=document.querySelector("video");' +
-  'Object.defineProperty(media,"readyState",{get:()=>4});' +
-  'Object.defineProperty(media,"duration",{get:()=>200});' +
-  'Object.defineProperty(media,"paused",{get:()=>false});' +
   'document.getElementById("native-save").addEventListener("click",()=>{' +
   'if(document.querySelector("#fake-picker"))return;' +
   'const picker=document.createElement("ytd-add-to-playlist-renderer");picker.id="fake-picker";' +
@@ -32,6 +29,10 @@ async function fixture(): Promise<{ context: BrowserContext; page: Page }> {
   const page = await context.newPage();
   await page.route('https://www.youtube.com/**', async route => {
     const url = new URL(route.request().url());
+    if (url.pathname === '/fixtures/mock-video.mp4') {
+      await route.fulfill({ status: 200, contentType: 'video/mp4', path: resolve('tests/fixtures/mock-video.mp4') });
+      return;
+    }
     await route.fulfill({ status: 200, contentType: 'text/html',
       body: url.pathname === '/playlist' ? playlist : watch });
   });
@@ -43,6 +44,7 @@ test('explicit timestamp persists across reopening a Watch Later video', async (
   try {
     await page.goto('https://www.youtube.com/watch?v=' + FIRST);
     await expect(page.locator('#ytwash-save-position')).toBeVisible({ timeout: 15000 });
+    await expect.poll(() => page.locator('video').evaluate((v: HTMLVideoElement) => v.readyState >= 1)).toBe(true);
     await page.locator('video').evaluate((video: HTMLVideoElement) => { video.currentTime = 83; });
     await page.locator('#ytwash-save-position').click();
     await expect(page.locator('#ytwash-resume-status')).toContainText('Saved 1:23 locally');
@@ -75,13 +77,11 @@ test('completed video is not removed when Watch Later membership is uncertain', 
     await expect(toggle).toBeVisible({ timeout: 15000 });
     await toggle.check();
     await expect(page.locator('#ytwash-auto-remove-message')).toContainText('Auto-removal enabled');
-    await page.locator('video').evaluate((video: HTMLVideoElement) => {
-      for (let n = 1; n <= 12; n++) {
-        video.currentTime = n;
-        video.dispatchEvent(new Event('timeupdate'));
-      }
-      video.dispatchEvent(new Event('ended'));
-    });
+    await expect.poll(() => page.locator('video').evaluate((v: HTMLVideoElement) => v.readyState >= 2)).toBe(true);
+    await page.locator('video').evaluate(async (video: HTMLVideoElement) => { video.muted = true; await video.play(); });
+    // Actual elapsed playback rather than synthetic seeking events: verifies cleanup's >=5s guard.
+    await expect.poll(() => page.locator('video').evaluate((video: HTMLVideoElement) => video.currentTime), { timeout: 12000 }).toBeGreaterThan(6);
+    await page.locator('video').evaluate((video: HTMLVideoElement) => video.dispatchEvent(new Event('ended')));
     await expect(page.locator('#ytwash-auto-remove-message')).toContainText('nothing removed');
     await expect(page.locator('#fake-picker input')).not.toBeChecked();
     const removed = await page.evaluate(() => (window as Window & { __removedFromWatchLater?: boolean }).__removedFromWatchLater);
