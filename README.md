@@ -2,54 +2,80 @@
 
 **Watch it. Clear it.**
 
-YTWash is a Chrome extension that enhances YouTube's native **Watch Later** playlist without creating another dashboard or additional playlists.
+YTWash makes YouTube's **Watch Later** playlist easier to browse and finish. Find videos from the same creator, play them in sequence, and pick up where you left off—all within YouTube.
 
-## Stack
+> **Alpha release:** YTWash is experimental. Features have been tested against simulated YouTube pages in Chromium and Firefox, but have not yet been fully verified in a signed-in YouTube session. YouTube interface changes may affect how it works.
 
-TypeScript · Vite · Chrome Manifest V3
+## Get YTWash
 
-## Development
+**[Download the latest experimental release](https://github.com/akaizn-junior/ytwash/releases)**
 
-```bash
-npm install
-npm run typecheck
-npm run build
-```
+### Install in Chrome or Microsoft Edge
 
-To try the development build, open Chrome → Extensions → Developer mode → Load unpacked, then select the generated `dist/` directory.
+1. Open the **Releases** link above and download the latest `ytwash-*.zip` file from **Assets**. Do not download the “Source code” archive.
+2. Extract the ZIP into a folder and keep that folder somewhere permanent.
+3. Open `chrome://extensions` in Chrome, or `edge://extensions` in Edge.
+4. Enable **Developer mode**.
+5. Choose **Load unpacked** and select the **extracted folder containing `manifest.json`**.
+6. Open or refresh [YouTube Watch Later](https://www.youtube.com/playlist?list=WL).
 
-## Current implementation
+YTWash is not currently distributed through a browser extension store, so it must be installed manually.
 
-- Chrome extension scaffold with Manifest V3.
-- Initial collapsible creator-grouping view embedded into the native Watch Later page, currently based on rendered playlist entries.
-- GitHub Actions build workflow.
+**Firefox:** YTWash is also being tested in Firefox. The GitHub ZIP is not a signed Firefox add-on and cannot be installed permanently as a regular Firefox extension. For temporary testing, open `about:debugging#/runtime/this-firefox`, select **Load Temporary Add-on**, and choose `manifest.json` from the extracted folder. Firefox removes temporary add-ons when the browser closes.
 
-## V1 roadmap
+## What you can do
 
-- [ ] Reliable creator grouping by stable channel ID, including lazy-loaded playlist entries.
-- [ ] Play videos from the selected creator consecutively.
-- [ ] Save and resume individual video timestamps.
-- [ ] Remove completed videos from the native Watch Later playlist.
-- [ ] Keep grouped content synchronized with playlist changes and navigation.
-- [ ] Validate the complete workflow in a signed-in browser session.
+### Find videos by creator
 
-**Status:** Initial prototype. These V1 features are not yet fully implemented or browser-tested.
+Open [Watch Later](https://www.youtube.com/playlist?list=WL). YTWash adds a **Group by creator** section above YouTube's original playlist.
 
-## Principles
+- Expand a creator to see their videos.
+- Search for a creator or video title.
+- Sort groups by number of videos, creator name, or recently indexed videos.
+- Choose **Index more** to scroll through the playlist and discover additional videos.
+- Use **Hide groups** when you want the regular YouTube view.
 
-Keep everything inside YouTube, preserve the native playlist and controls, and never create duplicate playlists.
+YouTube loads playlist entries gradually. YTWash groups the videos it has detected, so the number shown may be smaller than your full Watch Later collection until more entries load. Your original playlist remains underneath the grouping view.
 
-Smart prefetch and seamless transitions are deferred to V2.
+### Play one creator's videos in a row
 
+Expand a creator and select **Play this creator**. YTWash opens the first indexed video and advances to the next when playback ends.
 
-## Versioned releases
+Use **Stop creator playback** on the video page to end the queue. The queue is temporary and applies to the current browsing session.
 
-GitHub Actions builds the extension once for every pushed version tag such as `v0.1.0` and publishes the output to **GitHub Releases**. Before publishing, the workflow checks that the tag matches both `package.json` and `public/manifest.json`, runs TypeScript checks, and verifies the extension build.
+### Save your place in a video
 
-Release assets:
-- `ytwash-vX.Y.Z.zip` — unpack to a folder, then in Chrome/Edge use **Extensions → Developer mode → Load unpacked** and select that folder.
-- `ytwash-vX.Y.Z.sha256` — SHA-256 checksum of the ZIP.
+On a YouTube video, select **YTWash · Save at current time**. Your playback position is saved in the extension's local browser storage.
 
-Firefox can load the extension temporarily for development/testing; permanent distribution in Firefox requires Mozilla add-on signing. A GitHub ZIP is not automatically a signed Firefox add-on.
+If YouTube's Save menu opens, choose **Watch Later** yourself. Saving a timestamp **does not automatically add a video to Watch Later**.
 
-Release workflow: `.github/workflows/release.yml`. To publish, update both version fields, merge the changes, then create and push the matching `vX.Y.Z` tag on the release commit. Regular branch and PR builds remain available as GitHub Actions artifacts; they are not published releases. Version tags below 1.0 are published as prereleases.
+The next time you open that video in the same browser profile, YTWash attempts to resume from your saved position. A start time explicitly included in the video URL takes priority.
+
+### Automatically remove completed videos (optional)
+
+On a video page, YTWash offers **Auto-remove from Watch Later after finishing (experimental)**.
+
+**This feature is off by default.** Enable it only if you want YTWash to attempt to remove a video after it ends naturally and at least five seconds of actual playback have been detected.
+
+YTWash uses YouTube's own controls and attempts removal **only when it can confirm that the video belongs to Watch Later**. If it cannot confirm membership, it leaves the playlist unchanged. Removal is not guaranteed; check Watch Later to verify the result.
+
+**For your first test, keep automatic removal disabled**, especially if your Watch Later playlist contains videos you want to preserve.
+
+## What to expect from this alpha
+
+- YTWash works inside YouTube; it does not create or manage a separate playlist.
+- Creator grouping depends on videos YouTube has loaded into the page. Very large playlists may require **Index more**.
+- Saved timestamps are local to the browser profile; they do not sync across devices.
+- Playback, resume, and playlist controls depend on YouTube's current interface and may stop working if YouTube changes it.
+- Automated Chromium and Firefox tests use simulated YouTube pages. Real, signed-in YouTube behavior still needs validation.
+- YTWash is not affiliated with or endorsed by YouTube or Google.
+
+## Privacy
+
+YTWash runs in your browser. It accesses YouTube pages to provide its features, stores saved playback positions and your automatic-removal preference locally, and uses YouTube's visible playlist controls. The extension does **not** require a YTWash account or run its own backend service.
+
+## Help and feedback
+
+Found a bug or a YouTube page that doesn't work as expected? [Report an issue](https://github.com/akaizn-junior/ytwash/issues). Include your browser, YTWash version, what you tried, and what happened. Please avoid sharing private account information.
+
+YTWash is [open source under the MIT License](LICENSE).
