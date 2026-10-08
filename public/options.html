@@ -14,6 +14,8 @@
     label { display: grid; grid-template-columns: 20px 1fr; gap: 12px; margin: 20px 0; cursor: pointer; }
     input { margin-top: 4px; accent-color: #ff0033; }
     small { display: block; font-size: 14px; line-height: 1.5; margin-top: 5px; color: light-dark(#555, #bbb); }
+    .interval { display:block; }
+    .interval input { width:80px; padding:8px; }
     #status { min-height: 24px; }
   </style>
 </head>
@@ -31,9 +33,18 @@
     <label><input type="checkbox" data-key="ytwash:group-by-creator" data-default="false"><span>Group playlists by creator<small>Group videos from the same creator in any YouTube playlist, including the watch-page sidebar. Newly loaded videos join their groups. Turn off to use YouTube’s original order.</small></span></label>
     <label><input type="checkbox" data-key="ytwash:auto-remove-completed" data-default="false"><span>Remove completed videos from playlists<small>Automatically remove a finished video from the playlist you are watching, after at least five seconds of playback. Clears its saved position too. Outside a playlist, cleanup applies to Watch Later. Your tab stays open.</small></span></label>
   </fieldset>
+  <fieldset disabled id="reminders">
+    <legend>Watch Later reminders</legend>
+    <label><input type="checkbox" data-key="ytwash:reminders-enabled" data-default="false"><span>Remind me about saved videos<small>Automatically remind you about one unwatched video at a time. No YTWash account required. Your browser must be running and system notifications enabled.</small></span></label>
+    <label class="interval" for="reminder-interval">Remind me every <input id="reminder-interval" type="number" min="1" max="365" step="1" value="7" required> days<small>Choose 1 for daily, 7 for weekly, 30 for monthly, or any interval up to 365 days. Changing the interval starts a new countdown.</small></label>
+    <p>On a video, choose <strong>Save for later · YTWash</strong> to save locally, even without signing into YouTube. Native Save also adds to this queue. Previously loaded Watch Later videos are included. Finished videos stop appearing in reminders.</p>
+    <h3>Saved locally</h3>
+    <ul id="later-queue"></ul>
+  </fieldset>
   <p id="status" role="status" aria-live="polite"></p>
   <p><small>Your preferences and saved positions stay in this browser profile. They do not sync across devices. A timestamp in a video link takes priority over your saved position.</small></p>
   <p><a href="https://akaizn-junior.github.io/ytwash/" target="_blank" rel="noopener noreferrer">Installation and help</a> · <a href="https://github.com/akaizn-junior/ytwash/issues" target="_blank" rel="noopener noreferrer">Report a problem</a></p>
   <script src="options.js"></script>
 </body>
 </html>
+
