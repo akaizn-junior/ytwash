@@ -57,11 +57,7 @@ function makeGroup(creator: string, key: string, entries: Entry[]): HTMLElement 
   box.className = GROUP_CLASS;
   box.dataset.creator = key;
   box.setAttribute('aria-label', creator + ' · ' + entries.length + ' videos');
-  box.style.cssText = 'box-sizing:border-box;width:100%;margin:8px 0 16px;padding:8px;border:1px solid var(--yt-spec-10-percent-layer);border-radius:12px;color:var(--yt-spec-text-primary)';
-  const label = document.createElement('div');
-  label.textContent = creator + ' · ' + entries.length + ' videos';
-  label.style.cssText = 'padding:4px 8px 8px;font:500 1.4rem Roboto,Arial,sans-serif';
-  box.append(label);
+  box.style.cssText = 'box-sizing:border-box;width:100%;margin:4px 0 10px;padding:4px 6px;border:0;background:transparent';
   return box;
 }
 function render(): void {
@@ -77,7 +73,6 @@ function render(): void {
   try {
     document.querySelectorAll('.' + GROUP_CLASS).forEach(box => box.replaceWith(...Array.from(box.querySelectorAll(VIDEO_SELECTOR))));
     nodes.forEach(el=>{el.hidden=false;el.style.removeProperty('display');});
-    document.getElementById(CONTROL_ID)?.remove();
     const groups = new Map<string,Entry[]>();
     for (const entry of entries) {
       const list=groups.get(entry.key)||[];
