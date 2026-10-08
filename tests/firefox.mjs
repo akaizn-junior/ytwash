@@ -56,7 +56,8 @@ try {
   await driver.wait(async () => (await driver.findElements(By.css('#ytwash-creator-groups .yw-item'))).length === 1, 8000);
   console.log('PASS Firefox: creator grouping and search');
 
-  await search.clear();
+  // Search input is replaced during rerender. Update it inside the page, not via stale WebElement.
+  await driver.executeScript("const input=document.getElementById('ytwash-search');input.value='';input.dispatchEvent(new Event('input',{bubbles:true}))");
   const play = By.css('#ytwash-creator-groups button[aria-label="Play all indexed Watch Later videos from Example Creator"]');
   await driver.findElement(play).click();
   await driver.wait(until.urlContains('/watch?v=' + first), 12000);
