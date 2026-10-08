@@ -60,29 +60,29 @@ function openNativeSaveMenu(): boolean {
 }
 async function saveCurrent(): Promise<void> {
   const id = getId(), video = document.querySelector<HTMLVideoElement>('video.html5-main-video');
-  if (!id || !video || !Number.isFinite(video.currentTime)) { setStatus(Video not ready.'); return; }
+  if (!id || !video || !Number.isFinite(video.currentTime)) { setStatus('Video not ready.'); return; }
   const seconds = Math.floor(video.currentTime);
   const saved = await store(id, seconds);
-  if (!saved) { setStatus(Could not save position.'); return; }
+  if (!saved) { setStatus('Could not save position.'); return; }
   const opened = openNativeSaveMenu();
-  status(opened
+  setStatus(opened
     ? 'Saved ' + formatTime(seconds) + ' locally. Choose Watch Later in YouTube’s Save menu.'
     : 'Saved ' + formatTime(seconds) + ' locally. Use YouTube’s Save button to add to Watch Later.');
 }
 async function applyResume(id: string, video: HTMLVideoElement): Promise<void> {
   const saved = await load(id);
   if (getId() !== id || activeVideo !== video || resumeApplied || !saved) return;
-  if (hasExplicitTime()) { setStatus(URL start time takes priority over saved position.'); return; }
+  if (hasExplicitTime()) { setStatus('URL start time takes priority over saved position.'); return; }
   const seek = (): void => {
     if (getId() !== id || activeVideo !== video || resumeApplied || video.readyState < 1) return;
     if (Number.isFinite(video.duration) && saved.seconds >= video.duration - 5) {
-      setStatus(Saved position is near the end; not resuming automatically.');
+      setStatus('Saved position is near the end; not resuming automatically.');
       resumeApplied = true; return;
     }
     if (saved.seconds < 1) { resumeApplied = true; return; }
     video.currentTime = saved.seconds;
     resumeApplied = true;
-    setStatus(Resumed at ' + formatTime(saved.seconds) + '.');
+    setStatus('Resumed at ' + formatTime(saved.seconds) + '.');
   };
   if (video.readyState >= 1) seek();
   else video.addEventListener('loadedmetadata', seek, { once: true });
