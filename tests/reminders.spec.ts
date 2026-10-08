@@ -12,6 +12,7 @@ test('account-free local saves and reminder interval are controlled through Opti
       '<html><head><title>Local video - YouTube</title></head><body><ytd-watch-metadata><h1>Local video</h1><div id="actions"></div></ytd-watch-metadata></body></html>' }));
     await page.goto('https://www.youtube.com/watch?v=abcdefghijk');
     await page.locator('#ytwash-save-for-later').click();
+    await expect(page.locator('#ytwash-save-for-later .ytwash-save-lightning')).toHaveCount(0);
     const options = await context.newPage();
     await options.goto(new URL('options.html', worker.url()).href);
     await expect(options.locator('#reminders')).toHaveJSProperty('disabled', false);
