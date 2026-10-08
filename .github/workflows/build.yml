@@ -1,4 +1,4 @@
-name: Build extension
+name: Build and test extension
 on: [push, pull_request]
 jobs:
   build:
@@ -11,6 +11,16 @@ jobs:
       - run: npm install
       - run: npm run typecheck
       - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ytwash-playwright-results
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
           name: ytwash-extension

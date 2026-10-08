@@ -6,9 +6,11 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.0",
     "@types/chrome": "^0.0.300",
     "typescript": "^5.9.3",
     "vite": "^7.1.0"
