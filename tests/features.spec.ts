@@ -57,6 +57,30 @@ test('Watch Later stays native until grouping is requested', async () => {
   } finally { await context.close(); }
 });
 
+test('grouping is a one-time action and undo restores Watch Later', async () => {
+  const { context, page } = await fixture();
+  try {
+    await page.goto('https://www.youtube.com/playlist?list=WL');
+    const toggle = page.locator('#ytwash-grouping-toggle');
+    await expect(toggle).toHaveText('Group by creator', { timeout: 15000 });
+    await toggle.click();
+    await expect(page.locator('.ytwash-native-group')).toHaveCount(1);
+    await toggle.click();
+    await expect(toggle).toHaveText('Group by creator');
+    await expect(page.locator('.ytwash-native-group')).toHaveCount(0);
+    await expect(page.locator('ytd-playlist-video-renderer a#video-title').allTextContents())
+      .resolves.toEqual(['First video', 'Second video']);
+
+    // A later YouTube list update must not silently turn grouping back on.
+    await page.locator('body').evaluate(body => {
+      const row = document.createElement('ytd-playlist-video-renderer');
+      row.innerHTML = '<a id="video-title" href="/watch?v=12345678901">Third video</a><ytd-channel-name><a href="/channel/UCcreator1">Example Creator</a></ytd-channel-name>';
+      body.append(row);
+    });
+    await expect(page.locator('.ytwash-native-group')).toHaveCount(0);
+  } finally { await context.close(); }
+});
+
 test('completed video is not removed when Watch Later membership is uncertain', async () => {
   const { context, page } = await fixture();
   try {
