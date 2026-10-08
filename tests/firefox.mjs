@@ -47,7 +47,7 @@ try {
   await driver.installAddon(addon, true);
   await driver.get(origin + '/playlist?list=WL');
   const group = await driver.wait(until.elementLocated(By.css('.ytwash-native-group')), 15000);
-  assert.match(await group.getText(), /Example Creator · 2 videos/);
+  assert.equal(await group.getAttribute('aria-label'), 'Example Creator · 2 videos');
   assert.equal((await driver.findElements(By.css('.ytwash-native-group ytd-playlist-video-renderer'))).length, 2);
   assert.equal((await driver.findElements(By.css('.ytwash-native-group button'))).length, 0);
   assert.equal((await driver.findElements(By.css('#ytwash-native-controls'))).length, 0);
