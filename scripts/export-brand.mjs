@@ -1,10 +1,11 @@
 import { chromium } from '@playwright/test';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, copyFileSync } from 'node:fs';
 const logo = readFileSync('assets/brand/logo.svg', 'utf8');
+const favicon = readFileSync('assets/brand/favicon.svg', 'utf8');
 const browser = await chromium.launch({channel:'chromium', headless:true});
 for (const size of [16,32,48,64,128,256,512]) {
   const page = await browser.newPage({viewport:{width:size,height:size},deviceScaleFactor:1});
-  await page.setContent(`<style>html,body{margin:0;background:transparent}svg{width:100%;height:100%}</style>${logo}`);
+  await page.setContent(`<style>html,body{margin:0;background:transparent}svg{width:100%;height:100%}</style>${size <= 32 ? favicon : logo}`);
   await page.screenshot({path:`public/icons/icon-${size}.png`,omitBackground:true});
   await page.close();
 }
@@ -22,4 +23,20 @@ for (const [name,width,height] of [['store-tile',440,280],['store-marquee',1400,
   const page = await browser.newPage({viewport:{width,height},deviceScaleFactor:1});
   await page.setContent(html);await page.screenshot({path:`assets/brand/${name}.png`});await page.close();
 }
+copyFileSync('assets/brand/favicon.svg', 'site/icons/favicon.svg');
+for (const size of [16,32,48,180]) {
+  const page = await browser.newPage({viewport:{width:size,height:size},deviceScaleFactor:1});
+  await page.setContent(`<style>html,body{margin:0;background:transparent}svg{width:100%;height:100%}</style>${favicon}`);
+  await page.screenshot({path:`site/icons/favicon-${size}.png`,omitBackground:true});await page.close();
+}
+// ICO container with exact-size PNG frames; no image resampling.
+const frames = [16,32,48].map(size => ({size,data:readFileSync(`site/icons/favicon-${size}.png`)}));
+const header = Buffer.alloc(6);header.writeUInt16LE(1,2);header.writeUInt16LE(frames.length,4);
+let offset = 6 + 16 * frames.length;
+const directory = frames.map(({size,data}) => {
+  const entry = Buffer.alloc(16);entry[0]=size;entry[1]=size;
+  entry.writeUInt16LE(1,4);entry.writeUInt16LE(32,6);entry.writeUInt32LE(data.length,8);entry.writeUInt32LE(offset,12);
+  offset+=data.length;return entry;
+});
+writeFileSync('site/favicon.ico',Buffer.concat([header,...directory,...frames.map(frame=>frame.data)]));
 await browser.close();

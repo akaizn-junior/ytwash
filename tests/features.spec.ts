@@ -109,7 +109,7 @@ async function openOptions(context: BrowserContext): Promise<Page> {
   const worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker');
   const options = await context.newPage();
   await options.goto(new URL('options.html', worker.url()).href);
-  await expect(options.locator('#preferences')).toBeEnabled();
+  await expect(options.locator('#preferences')).toHaveJSProperty('disabled', false);
   return options;
 }
 

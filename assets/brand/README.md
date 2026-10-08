@@ -1,17 +1,9 @@
 # YTWash publishing assets
 
-White rounded video button with red `ytwash` lettering. The original SVG uses paths, so it needs no external fonts. Transparent PNG icons are in `public/icons/` at 16, 32, 48, 64, 128, 256, and 512 pixels. Both browser bundles use the appropriate icons automatically.
+Logo: a white rounded video button with the same red lightning SVG used beside YouTube’s Save option. Slogan: **watch it. clear it.**
 
-- `logo.svg`: scalable master, transparent exterior.
-- `store-tile.png`: 440 × 280 small promotional tile.
-- `store-marquee.png`: 1400 × 560 promotional banner.
-- `social-preview.png`: 1200 × 630 release/social graphic.
-- Corresponding HTML files: editable promotional graphic sources.
+`logo.svg` is the vector master with outlined lettering and transparent exterior. `favicon.svg` uses the same design. Transparent extension icons are exported at 16, 32, 48, 64, 128, 256, and 512 pixels in `public/icons/`. Site favicons include SVG, PNG, ICO, and a 180px Apple touch icon.
 
-Slogan: **watch it. clear it.**
+Promotional graphics: 440×280 store tile, 1400×560 store marquee, and 1200×630 social preview. Editable HTML sources are included. Recreate exports using `node scripts/export-brand.mjs` with Playwright Chromium installed.
 
-Palette: red `#ff0033`, white `#ffffff`. The white button is intended for colored or dark backgrounds. Promotional copy describes creator groups and saved timestamps without claiming YouTube affiliation.
-
-Recreate PNG exports with `PLAYWRIGHT_BROWSERS_PATH=/path/to/browsers node scripts/export-brand.mjs` after installing the Playwright Chromium browser. Review store-specific listing requirements before upload; promotional graphics do not replace screenshots of the actual extension.
-
-Letter outlines use DejaVu Sans Bold (Bitstream Vera/DejaVu license); see FONT-LICENSE.txt.
+Palette: red `#ff0033`, white `#ffffff`. Previous outlined text concepts use DejaVu Sans Bold; see FONT-LICENSE.txt. Brush-stroke files, `play-rain.svg`, and `wash-button.svg` are retained as previous concepts.
