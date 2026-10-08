@@ -2,7 +2,7 @@
 
 **watch it. clear it.**
 
-YTWash helps you finish your YouTube playlists: group videos by creator, save your place, and optionally clear finished videos from Watch Later.
+YTWash helps you finish your YouTube playlists: group videos by creator, save your place, and optionally clear finished videos from your playlists.
 
 ## Install
 
@@ -41,15 +41,15 @@ Only videos YouTube has loaded or YTWash has previously indexed can be grouped. 
 
 ## Clear
 
-Enable **Remove completed videos from Watch Later** in Options. It is off by default.
+Enable **Remove completed videos from playlists** in Options.
 
-When a video finishes, after at least five seconds of actual playback, YTWash automatically removes it from Watch Later and clears its saved position. There is no confirmation prompt. Removal happens through YouTube’s native controls; if membership cannot be established, YTWash leaves it unchanged.
+When a video finishes, after at least five seconds of actual playback, YTWash automatically removes it from the playlist you are watching and clears its saved position. There is no confirmation prompt. Removal happens through YouTube’s native controls; if membership cannot be established, YTWash leaves it unchanged.
 
-Cleanup applies to Watch Later only. It does not remove videos from other playlists or close your tab. Skipping to another video does not trigger cleanup.
+Cleanup applies to the playlist in the current video link. Outside a playlist, it applies to Watch Later. It does not close your tab. Skipping to another video does not trigger cleanup.
 
 ## Your settings and privacy
 
-Options contains two preferences: **Group playlists by creator** and **Remove completed videos from Watch Later**. Changes apply to open YouTube tabs.
+Options contains two preferences: **Group playlists by creator** and **Remove completed videos from playlists**. Changes apply to open YouTube tabs.
 
 Settings, saved positions, and playlist order stay in your browser profile. They do not sync across devices. YTWash needs no separate account or backend service and uses your existing YouTube sign-in.
 
