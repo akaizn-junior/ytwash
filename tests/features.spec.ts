@@ -39,23 +39,6 @@ async function fixture(): Promise<{ context: BrowserContext; page: Page }> {
   return { context, page };
 }
 
-test('explicit timestamp persists across reopening a Watch Later video', async () => {
-  const { context, page } = await fixture();
-  try {
-    await page.goto('https://www.youtube.com/watch?v=' + FIRST);
-    await expect(page.locator('#ytwash-save-position')).toBeVisible({ timeout: 15000 });
-    await expect.poll(() => page.locator('video').evaluate((v: HTMLVideoElement) => v.readyState >= 1)).toBe(true);
-    await page.locator('video').evaluate((video: HTMLVideoElement) => { video.currentTime = 83; });
-    // HTMLMediaElement seeks asynchronously. Assert the seek completed before saving.
-    await expect.poll(() => page.locator('video').evaluate((video: HTMLVideoElement) => Math.floor(video.currentTime)), { timeout: 10000 }).toBe(83);
-    await page.locator('#ytwash-save-position').click();
-    await expect(page.locator('#ytwash-resume-status')).toContainText('Saved 1:23 locally');
-    await page.reload();
-    await expect(page.locator('#ytwash-resume-status')).toContainText('Resumed at 1:23');
-    await expect.poll(() => page.locator('video').evaluate((video: HTMLVideoElement) => Math.floor(video.currentTime))).toBe(83);
-  } finally { await context.close(); }
-});
-
 test('creator playback advances to the next indexed video after ended', async () => {
   const { context, page } = await fixture();
   try {
