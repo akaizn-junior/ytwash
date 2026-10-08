@@ -2,166 +2,144 @@ import { startCreatorPlayback } from './playback';
 import './cleanup';
 import './timestamps';
 
-/** YTWash creator grouping. A virtual index: native playlist items are never moved or modified. */
+/**
+ * Enhance the existing Watch Later list in place. No duplicate cards, thumbnails,
+ * standalone panel, or custom playlist rendering.
+ */
 const VIDEO_SELECTOR = 'ytd-playlist-video-renderer';
-const ROOT_ID = 'ytwash-creator-groups';
-const state = new Map<string, VideoEntry>();
-type VideoEntry = { id: string; title: string; href: string; creator: string; channelKey: string; thumbnail: string; order: number };
-type Sort = 'count' | 'name' | 'recent';
-let sort: Sort = 'count';
-let collapsed = false;
-let query = '';
-let queued: number | undefined;
-let scanRequested = false;
-let lastPage = '';
+const GROUP_CLASS = 'ytwash-native-group';
+const CONTROL_ID = 'ytwash-native-controls';
+type Entry = { element: HTMLElement; id: string; creator: string; key: string; index: number };
+const originalOrder = new Map<HTMLElement, number>();
+let nextIndex = 0;
+let enabled = true;
 let observer: MutationObserver;
+let scheduled: number | undefined;
+let rendering = false;
+let lastPage = '';
+const collapsed = new Set<string>();
 
-function watchLater(): boolean {
+function onWatchLater(): boolean {
   return location.pathname === '/playlist' && new URLSearchParams(location.search).get('list') === 'WL';
 }
-function videoId(url: string): string | null {
-  try { return new URL(url, location.origin).searchParams.get('v'); } catch { return null; }
-}
-function readEntry(el: HTMLElement, order: number): VideoEntry | null {
-  const link = el.querySelector<HTMLAnchorElement>('a#video-title');
-  if (!link) return null;
-  const id = videoId(link.href);
+function entryFor(el: HTMLElement): Entry | null {
+  const title = el.querySelector<HTMLAnchorElement>('a#video-title');
+  if (!title) return null;
+  const id = new URL(title.href, location.origin).searchParams.get('v');
   if (!id) return null;
   const channel = el.querySelector<HTMLAnchorElement>('ytd-channel-name a[href], #channel-name a[href], a[href^="/channel/"], a[href^="/@"]');
-  const creator = channel?.textContent?.trim() || el.querySelector('#channel-name')?.textContent?.trim() || 'Unknown creator';
-  const channelPath = channel?.getAttribute('href')?.split('?')[0];
-  // Stable channel IDs are preferred; handles are a fallback when YouTube does not expose IDs.
-  const channelKey = channelPath?.startsWith('/channel/') ? channelPath : channelPath?.startsWith('/@') ? channelPath.toLowerCase() : 'name:' + creator.toLowerCase();
-  const thumbnail = el.querySelector<HTMLImageElement>('ytd-thumbnail img')?.getAttribute('src') || '';
-  return { id, title: link.textContent?.trim() || 'Untitled video', href: link.href, creator, channelKey, thumbnail, order };
+  const creator = channel?.textContent?.trim() || el.querySelector('#channel-name')?.textContent?.trim() || '';
+  if (!creator) return null;
+  const path = channel?.getAttribute('href')?.split('?')[0] || '';
+  const key = path.startsWith('/channel/') ? path : path.startsWith('/@') ? path.toLowerCase() : 'name:' + creator.toLowerCase();
+  if (!originalOrder.has(el)) originalOrder.set(el, nextIndex++);
+  return { element: el, id, creator, key, index: originalOrder.get(el)! };
+}
+function restore(): void {
+  rendering = true;
+  observer?.disconnect();
+  try {
+    document.querySelectorAll<HTMLElement>(VIDEO_SELECTOR).forEach(el => { el.hidden = false; el.style.removeProperty('display'); });
+    for (const header of document.querySelectorAll('.' + GROUP_CLASS)) header.remove();
+    document.getElementById(CONTROL_ID)?.remove();
+    const entries = [...originalOrder.entries()].filter(([el]) => el.isConnected).sort((a,b)=>a[1]-b[1]);
+    const byParent = new Map<HTMLElement, HTMLElement[]>();
+    for (const [el] of entries) {
+      if (!el.parentElement) continue;
+      const list = byParent.get(el.parentElement) || [];
+      list.push(el);byParent.set(el.parentElement,list);
+    }
+    for (const [parent, list] of byParent) for (const el of list) parent.appendChild(el);
+  } finally { rendering = false; observer?.observe(document.documentElement,{subtree:true,childList:true}); }
 }
 function reset(): void {
-  state.clear();
-  document.getElementById(ROOT_ID)?.remove();
-  scanRequested = false;
+  restore();
+  originalOrder.clear();
+  nextIndex = 0;
+  collapsed.clear();
 }
-function indexRendered(): void {
-  if (!watchLater()) { reset(); return; }
-  const nodes = document.querySelectorAll<HTMLElement>(VIDEO_SELECTOR);
-  nodes.forEach((el, i) => {
-    const entry = readEntry(el, i);
-    if (entry) {
-      const previous = state.get(entry.id);
-      // Preserve first observed order when the playlist expands lazily.
-      state.set(entry.id, { ...entry, order: previous?.order ?? state.size });
-    }
-  });
-  render();
-}
-function element<K extends keyof HTMLElementTagNameMap>(name: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
-  const node = document.createElement(name);
-  if (className) node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
+function makeHeader(creator: string, key: string, entries: Entry[]): HTMLElement {
+  const header = document.createElement('div');
+  header.className = GROUP_CLASS;
+  header.dataset.creator = key;
+  header.style.cssText = 'display:flex;align-items:center;gap:12px;padding:14px 8px;border-bottom:1px solid var(--yt-spec-10-percent-layer);color:var(--yt-spec-text-primary);font:500 1.4rem Roboto,Arial,sans-serif';
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  const isCollapsed = collapsed.has(key);
+  toggle.textContent = (isCollapsed ? '▸ ' : '▾ ') + creator + ' · ' + entries.length + ' videos';
+  toggle.setAttribute('aria-expanded', String(!isCollapsed));
+  toggle.style.cssText = 'border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;padding:4px;text-align:left';
+  toggle.addEventListener('click', () => { if (collapsed.has(key)) collapsed.delete(key); else collapsed.add(key); render(); });
+  const play = document.createElement('button');
+  play.type = 'button';
+  play.textContent = 'Play creator';
+  play.setAttribute('aria-label', 'Play all indexed Watch Later videos from ' + creator);
+  play.style.cssText = 'border:0;border-radius:18px;background:var(--yt-spec-badge-chip-background);color:var(--yt-spec-text-primary);font:500 1.2rem Roboto,Arial,sans-serif;cursor:pointer;padding:8px 12px';
+  play.addEventListener('click', () => { if (!startCreatorPlayback(creator, entries.map(e=>e.id))) window.alert('YTWash could not start playback.'); });
+  header.append(toggle, play);
+  return header;
 }
 function render(): void {
-  if (!watchLater()) return;
-  const first = document.querySelector<HTMLElement>(VIDEO_SELECTOR);
-  if (!first?.parentElement) return;
-  let root = document.getElementById(ROOT_ID);
-  if (!root) {
-    root = element('section'); root.id = ROOT_ID;
-    root.setAttribute('aria-label', 'YTWash creator groups');
-    const style = element('style'); style.textContent = `
-#ytwash-creator-groups{margin:12px 0 24px;padding:16px;border:1px solid var(--yt-spec-10-percent-layer,#555);border-radius:14px;color:var(--yt-spec-text-primary,#eee);font-family:Roboto,Arial,sans-serif}
-#ytwash-creator-groups .yw-header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
-#ytwash-creator-groups button,#ytwash-creator-groups select,#ytwash-creator-groups input{background:var(--yt-spec-badge-chip-background,#272727);color:inherit;border:1px solid var(--yt-spec-10-percent-layer,#555);border-radius:8px;padding:8px;font:inherit}
-#ytwash-creator-groups button{cursor:pointer}#ytwash-creator-groups input{flex:1;min-width:130px}
-#ytwash-creator-groups details{border-top:1px solid var(--yt-spec-10-percent-layer,#444);padding:10px 0}
-#ytwash-creator-groups summary{cursor:pointer;font-weight:600;font-size:14px;padding:5px}
-#ytwash-creator-groups a{color:inherit;text-decoration:none}
-#ytwash-creator-groups a:hover{text-decoration:underline}
-#ytwash-creator-groups .yw-item{display:flex;align-items:center;gap:12px;padding:8px 4px;font-size:13px}
-#ytwash-creator-groups .yw-item img{width:96px;aspect-ratio:16/9;object-fit:cover;border-radius:7px}
-#ytwash-creator-groups .yw-muted{opacity:.65;font-size:12px}
-`;
-    root.append(style);
-    first.parentElement.insertBefore(root, first);
-  }
-  // Preserve expanded creators and focused search while refreshing results.
-  const expanded = new Set([...root.querySelectorAll<HTMLDetailsElement>('details[open]')].map(x => x.dataset.creator));
-  const focus = document.activeElement?.id === 'ytwash-search';
-  const cursor = focus ? (document.activeElement as HTMLInputElement).selectionStart : null;
-  root.querySelector('.yw-ui')?.remove();
-  const ui = element('div','yw-ui');
-  const header = element('div','yw-header');
-  const title = element('strong',undefined,'YTWash · Group by creator');
-  const counter = element('span','yw-muted',state.size + ' indexed videos');
-  const toggle = element('button',undefined,collapsed ? 'Show groups' : 'Hide groups');
-  toggle.type='button'; toggle.addEventListener('click',()=>{collapsed=!collapsed;render();});
-  header.append(title,counter,toggle);
-  ui.append(header);
-  if (!collapsed) {
-    const controls = element('div','yw-header');
-    const search = element('input'); search.id='ytwash-search';search.placeholder='Search creators or videos';search.value=query;
-    search.addEventListener('input',()=>{query=search.value;render();});
-    const select = element('select');
-    for (const [key,label] of [['count','Most videos first'],['name','Creator A–Z'],['recent','Recently indexed']] as const) {
-      const opt=element('option',undefined,label);opt.value=key;select.append(opt);
+  if (!onWatchLater()) { if (originalOrder.size) reset(); return; }
+  if (rendering) return;
+  const nodes = [...document.querySelectorAll<HTMLElement>(VIDEO_SELECTOR)];
+  const entries = nodes.map(entryFor).filter((e):e is Entry=>e!==null).sort((a,b)=>a.index-b.index);
+  const parent = entries[0]?.element.parentElement;
+  if (!parent) return;
+  rendering = true;
+  observer?.disconnect();
+  try {
+    document.querySelectorAll('.' + GROUP_CLASS).forEach(el=>el.remove());
+    nodes.forEach(el=>{el.hidden=false;el.style.removeProperty('display');});
+    document.getElementById(CONTROL_ID)?.remove();
+    const groups = new Map<string,Entry[]>();
+    for (const entry of entries) {
+      const list=groups.get(entry.key)||[];
+      list.push(entry);groups.set(entry.key,list);
     }
-    select.value=sort;select.setAttribute('aria-label','Sort creators');
-    select.addEventListener('change',()=>{sort=select.value as Sort;render();});
-    const scan = element('button',undefined,scanRequested?'Scanning…':'Index more');
-    scan.type='button';scan.disabled=scanRequested;scan.title='Scrolls the native playlist to load additional videos';
-    scan.addEventListener('click',()=>void loadMore());
-    controls.append(search,select,scan);ui.append(controls);
-    const groups = new Map<string,VideoEntry[]>();
-    for (const entry of state.values()) {
-      const list=groups.get(entry.channelKey)||[];
-      list.push(entry);groups.set(entry.channelKey,list);
+    const multiple = [...groups.entries()].filter(([,list])=>list.length>=2);
+    const controls = document.createElement('div');
+    controls.id = CONTROL_ID;
+    controls.style.cssText='padding:8px 4px 16px;color:var(--yt-spec-text-primary);font:1.3rem Roboto,Arial,sans-serif';
+    const label = document.createElement('label');
+    label.style.cssText='display:inline-flex;gap:10px;align-items:center;cursor:pointer';
+    const checkbox=document.createElement('input');
+    checkbox.type='checkbox';checkbox.checked=enabled;checkbox.setAttribute('aria-label','Group creators with two or more videos');
+    checkbox.addEventListener('change',()=>{enabled=checkbox.checked;render();});
+    label.append(checkbox,document.createTextNode('Group by creator (' + multiple.length + ')'));
+    controls.append(label);
+    parent.insertBefore(controls,entries[0].element);
+    if (!enabled || !multiple.length) {
+      for(const entry of entries) parent.appendChild(entry.element);
+      return;
     }
-    const ordered=[...groups.entries()].sort((a,b)=>sort==='name'?a[1][0].creator.localeCompare(b[1][0].creator):sort==='recent'?Math.max(...b[1].map(v=>v.order))-Math.max(...a[1].map(v=>v.order)):b[1].length-a[1].length);
-    let shown=0;
-    for(const [key,items] of ordered){
-      const visible=items.filter(v=>v.title.toLowerCase().includes(query.toLowerCase())||v.creator.toLowerCase().includes(query.toLowerCase()));
-      if (!visible.length) continue;
-      shown+=visible.length;
-      const details=element('details');details.dataset.creator=key;if(expanded.has(key))details.open=true;
-      const summary=element('summary',undefined,items[0].creator+' · '+items.length+' video'+(items.length===1?'':'s'));details.append(summary);
-      const play=element('button',undefined,'Play this creator');play.type='button';play.setAttribute('aria-label','Play all indexed Watch Later videos from '+items[0].creator);play.addEventListener('click',()=>{const ids=items.sort((a,b)=>a.order-b.order).map(v=>v.id);if(!startCreatorPlayback(items[0].creator,ids))window.alert('YTWash could not start creator playback.');});details.append(play);
-      for(const video of visible.sort((a,b)=>a.order-b.order)){
-        const row=element('div','yw-item');
-        const a=element('a');a.href=video.href;a.textContent=video.title;
-        if(video.thumbnail){const img=element('img');img.src=video.thumbnail;img.alt='';img.loading='lazy';row.append(img);}
-        row.append(a);details.append(row);
+    const grouped = new Set(multiple.flatMap(([,list])=>list.map(e=>e.element)));
+    for (const [key,list] of multiple.sort((a,b)=>a[1][0].index-b[1][0].index)) {
+      parent.appendChild(makeHeader(list[0].creator,key,list));
+      for (const entry of list) {
+        parent.appendChild(entry.element);
+        if (collapsed.has(key)) entry.element.style.display='none';
       }
-      ui.append(details);
     }
-    if(!shown)ui.append(element('p','yw-muted','No matching videos.'));
-    ui.append(element('p','yw-muted','Groups are a view of indexed items. The original Watch Later playlist and its controls remain below. YouTube loads more items as you scroll.'));
-  }
-  root.append(ui);
-  if(focus){const next=document.getElementById('ytwash-search') as HTMLInputElement|null;next?.focus();if(cursor!==null)next?.setSelectionRange(cursor,cursor);}
+    // A creator seen exactly once remains a normal YouTube playlist row.
+    for (const entry of entries) if (!grouped.has(entry.element)) parent.appendChild(entry.element);
+  } finally { rendering = false; observer?.observe(document.documentElement,{subtree:true,childList:true}); }
 }
-async function loadMore(): Promise<void> {
-  if(scanRequested)return;
-  scanRequested=true;render();
-  // Scroll the native page progressively; no private API or automatic playlist mutations.
-  let unchanged=0;
-  let previous=state.size;
-  for(let attempt=0;attempt<30&&unchanged<3&&watchLater();attempt++){
-    document.querySelectorAll<HTMLElement>(VIDEO_SELECTOR).item(document.querySelectorAll(VIDEO_SELECTOR).length-1)?.scrollIntoView({block:'end'});
-    await new Promise<void>(resolve=>setTimeout(resolve,650));
-    indexRendered();
-    if(state.size===previous)unchanged++;else unchanged=0;
-    previous=state.size;
-  }
-  scanRequested=false;render();
+function schedule(): void {
+  if (scheduled !== undefined) clearTimeout(scheduled);
+  scheduled=window.setTimeout(()=>{scheduled=undefined;render();},300);
 }
-function schedule():void { if(queued!==undefined)clearTimeout(queued);queued=window.setTimeout(()=>{queued=undefined;indexRendered();},350); }
 observer=new MutationObserver(mutations=>{
-  if (!watchLater()) return;
-  if (mutations.some(m=>!((m.target as Element).closest?.('#'+ROOT_ID) || (m.target as Element).id===ROOT_ID))) schedule();
+  if(rendering)return;
+  if(!onWatchLater())return;
+  // Ignore the DOM changes made by our controls and headings.
+  if(mutations.every(m=>(m.target as Element).closest?.('#'+CONTROL_ID+',.'+GROUP_CLASS)))return;
+  schedule();
 });
-observer.observe(document.documentElement,{childList:true,subtree:true});
+observer.observe(document.documentElement,{subtree:true,childList:true});
 window.addEventListener('yt-navigate-finish',()=>{
-  const now=location.pathname+location.search;
-  if(lastPage!==now){reset();lastPage=now;}
+  const page=location.pathname+location.search;
+  if(page!==lastPage){reset();lastPage=page;}
   schedule();
 });
 lastPage=location.pathname+location.search;
