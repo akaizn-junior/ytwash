@@ -34,16 +34,23 @@ jobs:
         with:
           firefox-version: latest
       - uses: browser-actions/setup-geckodriver@latest
-      - name: Ensure WebM generator exists
+      - name: Cache shared WebM fixture
+        id: webm-cache
+        uses: actions/cache@v4
+        with:
+          path: tests/fixtures/mock-video.webm
+          key: ytwash-webm-v1-32x32-120s
+      - name: Generate shared WebM only on cache miss
+        if: steps.webm-cache.outputs.cache-hit != 'true'
         run: |
           if ! command -v ffmpeg >/dev/null 2>&1; then
             sudo apt-get update -qq
             sudo apt-get install -y ffmpeg
           fi
-      - name: Generate one shared WebM fixture
-        run: |
           mkdir -p tests/fixtures
           ffmpeg -loglevel error -f lavfi -i color=c=black:s=32x32:r=2 -t 120 -an -c:v libvpx -b:v 100k -g 1 -deadline realtime -cpu-used 8 -y tests/fixtures/mock-video.webm
+      - name: Verify shared WebM fixture
+        run: test -s tests/fixtures/mock-video.webm
       - name: Test same dist in Chromium
         id: chromium
         run: npm run test:e2e
