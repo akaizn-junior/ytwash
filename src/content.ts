@@ -69,12 +69,13 @@ function render(): void {
   if (rendering) return;
   const nodes = [...document.querySelectorAll<HTMLElement>(VIDEO_SELECTOR)];
   const entries = nodes.map(entryFor).filter((e):e is Entry=>e!==null).sort((a,b)=>a.index-b.index);
-  const parent = entries[0]?.element.parentElement;
+  const firstParent = entries[0]?.element.parentElement;
+  const parent = firstParent?.closest<HTMLElement>('.' + GROUP_CLASS)?.parentElement || firstParent;
   if (!parent) return;
   rendering = true;
   observer?.disconnect();
   try {
-    document.querySelectorAll('.' + GROUP_CLASS).forEach(el=>el.remove());
+    document.querySelectorAll('.' + GROUP_CLASS).forEach(box => box.replaceWith(...Array.from(box.querySelectorAll(VIDEO_SELECTOR))));
     nodes.forEach(el=>{el.hidden=false;el.style.removeProperty('display');});
     document.getElementById(CONTROL_ID)?.remove();
     const groups = new Map<string,Entry[]>();
