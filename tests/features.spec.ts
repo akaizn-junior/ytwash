@@ -46,6 +46,8 @@ test('explicit timestamp persists across reopening a Watch Later video', async (
     await expect(page.locator('#ytwash-save-position')).toBeVisible({ timeout: 15000 });
     await expect.poll(() => page.locator('video').evaluate((v: HTMLVideoElement) => v.readyState >= 1)).toBe(true);
     await page.locator('video').evaluate((video: HTMLVideoElement) => { video.currentTime = 83; });
+    // HTMLMediaElement seeks asynchronously. Assert the seek completed before saving.
+    await expect.poll(() => page.locator('video').evaluate((video: HTMLVideoElement) => Math.floor(video.currentTime)), { timeout: 10000 }).toBe(83);
     await page.locator('#ytwash-save-position').click();
     await expect(page.locator('#ytwash-resume-status')).toContainText('Saved 1:23 locally');
     await page.reload();
