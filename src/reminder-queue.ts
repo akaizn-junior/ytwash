@@ -1,4 +1,5 @@
 /** Finished videos no longer need a reminder. */
+export {};
 let video: HTMLVideoElement | null = null;
 let current = '';
 let seconds = 0;
