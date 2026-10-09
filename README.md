@@ -67,19 +67,17 @@ Open Options by clicking the YTWash toolbar icon, or through your browser’s ex
 | Preference | What it does |
 | --- | --- |
 | **Group playlists by creator** | Groups playlist and sidebar videos, and uses that order for playback. |
-| **Remind me about saved videos** | Periodically sends a browser notification for one unwatched video. Off by default. |
-| **Reminder interval** | Set any whole number from 1 to 365 days; defaults to weekly. |
+| **Remind me to watch** | Choose a Watch Later video and set a one-time reminder. |
+| **When** | Later today, in 3 days, in a week, or a date and time you choose. |
 | **Remove completed videos from playlists** | Removes finished videos from the current playlist and clears their saved positions. |
 
 Save, resume, and creator-order playback are built-in features, not separate switches.
 
-### Automatic reminders without an account
+### Remind me to watch
 
-Enable reminders in Options and set the interval. Click **Save for later · YTWash** on a video to add it to the local queue without signing into YouTube. Native Save also queues the video locally, even if YouTube cannot confirm Watch Later membership. Options lists local saves and lets you remove them without changing YouTube playlists.
+Open a video's menu in Watch Later and choose **Remind me to watch**. Pick **Later today**, **In 3 days**, **In a week**, or **Choose a date and time…**. You can also set and cancel reminders in Options.
 
-Reminders rotate through local saves and previously indexed Watch Later videos. Click a notification to watch. Videos that finish after at least five seconds of playback stop being suggested, independently of playlist cleanup. Saving again makes them eligible again. Empty queues produce no notification.
-
-The first reminder arrives after the selected interval. Changing the interval restarts the countdown; restarting the browser preserves it or recreates a missing alarm. Notifications require a running browser and permission in system settings; reminders can be delayed while the browser is closed or the device sleeps. YTWash only knows Watch Later entries it has observed, so changes made elsewhere may not be reflected until you load that playlist again.
+Reminders happen once. Choose **Watch now** to open the video, **Remind me again** to choose another time, or dismiss the notification. Watching a video to the end cancels its reminder. Reminder menus use YouTube's own menu elements and follow its light or dark theme.
 
 ## Your settings and privacy
 
