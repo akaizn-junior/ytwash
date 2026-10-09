@@ -93,3 +93,9 @@ If something stops working, reload the extension and refresh YouTube. [Report a 
 [Project site](https://akaizn-junior.github.io/ytwash/) · [MIT license](LICENSE)
 
 YTWash is not affiliated with or endorsed by YouTube or Google.
+
+### Remind me to watch
+
+Choose **Remind me to watch** in a video menu on Home, search results, playlists, or the watch-page sidebar and video actions. One click schedules a browser notification for later today (three hours later, capped before midnight). It does not open a time picker or change playlist membership. Clicking the notification opens the video; saved timestamps still apply.
+
+Set a different default in **Options → Reminders**: tomorrow at 6 pm or in one week. Options also lists pending reminders with Cancel buttons. Clicking the action again replaces that video’s reminder. Timing uses your local timezone and changes apply to new reminders. Reminders stay in this browser profile. Your browser must be running, and system notifications must be allowed; overdue reminders are delivered when the browser starts again.

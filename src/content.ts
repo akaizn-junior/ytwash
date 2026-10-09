@@ -1,3 +1,4 @@
+import './reminders';
 import { startCreatorPlayback } from './playback';
 import './cleanup';
 import './sidebar';

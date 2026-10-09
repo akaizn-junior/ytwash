@@ -4,7 +4,9 @@
   "version": "0.1.0",
   "description": "Group YouTube Watch Later videos by creator and clear your backlog.",
   "permissions": [
-    "storage"
+    "storage",
+    "alarms",
+    "notifications"
   ],
   "options_ui": {
     "page": "options.html",
