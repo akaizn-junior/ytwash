@@ -1,5 +1,6 @@
 /** Playback cursor backed by the persisted grouped playlist index. */
 import { clearCompletedVideo } from './cleanup';
+import { setNextPreview } from './next-preview';
 import { preferences, preferencesReady, preferenceKeys } from './preferences';
 import { playlistId, readPlaylist, indexPlaylist, creatorOrder, type PlaylistEntry } from './playlists';
 const QUEUE_KEY = 'ytwash:creator-queue:v1';
@@ -52,6 +53,7 @@ function saveQueue(queue: CreatorQueue): boolean {
   catch { return false; }
 }
 export function stopCreatorPlayback(): void {
+  setNextPreview(null, false);
   sessionStorage.removeItem(QUEUE_KEY);
   document.getElementById('ytwash-playback-control')?.remove();
   advancing = false;
@@ -94,6 +96,7 @@ async function refreshQueue(queue: CreatorQueue, id: string): Promise<CreatorQue
   if (index < 0 || videoId() !== id || current?.creator !== queue.creator || current.ids[current.index] !== id) return queue;
   const updated = { ...queue, ids, index };
   saveQueue(updated);
+  setNextPreview(updated.ids[updated.index + 1] || null, true);
   return updated;
 }
 async function advance(direction: number, completed = false): Promise<void> {
@@ -127,17 +130,30 @@ document.addEventListener('click', event => {
   void advance(control.matches('.ytp-prev-button') ? -1 : 1);
 }, true);
 
+window.addEventListener('keydown', event => {
+  if (event.defaultPrevented || !event.shiftKey || event.ctrlKey || event.altKey || event.metaKey ||
+      event.key.toLowerCase() !== 'n' || !preferences.groupByCreator) return;
+  const target = event.composedPath()[0];
+  if (target instanceof HTMLElement && (target.isContentEditable || target.closest('input, textarea, select, [role="textbox"]'))) return;
+  const queue = getQueue(), id = videoId();
+  if (!queue || !id || queue.ids[queue.index] !== id) return;
+  event.preventDefault(); event.stopImmediatePropagation();
+  if (!event.repeat) void advance(1);
+}, true);
+
 function reconcilePlayback(): void {
   let queue = getQueue();
   const id = videoId(), path = location.pathname + location.search;
   if (queue && playlistId() && playlistId() !== queue.creator) { stopCreatorPlayback(); queue = null; }
   if (path !== lastLocation) { lastLocation = path; advancing = false; }
   if (!queue || !id || queue.ids[queue.index] !== id) {
+    setNextPreview(null, false);
     if (queue) stopCreatorPlayback();
     if (attached) { attached.removeEventListener('ended',ended,true); attached=null; }
     void hydrateNativePlaylist();
     return;
   }
+  setNextPreview(queue.ids[queue.index + 1] || null, preferences.groupByCreator);
   const video = document.querySelector<HTMLVideoElement>('video.html5-main-video');
   if (video && video !== attached) {
     attached?.removeEventListener('ended',ended,true);
@@ -156,3 +172,4 @@ chrome.storage.onChanged.addListener((changes, area) => {
   stopCreatorPlayback();
   reconcilePlayback();
 });
+
