@@ -144,7 +144,6 @@ window.addEventListener('keydown', event => {
 function reconcilePlayback(): void {
   let queue = getQueue();
   const id = videoId(), path = location.pathname + location.search;
-  if (!preferences.groupByCreator) { setNextPreview(null, false); return; }
   if (queue && playlistId() && playlistId() !== queue.creator) { stopCreatorPlayback(); queue = null; }
   if (path !== lastLocation) { lastLocation = path; advancing = false; }
   if (!queue || !id || queue.ids[queue.index] !== id) {
@@ -154,7 +153,7 @@ function reconcilePlayback(): void {
     void hydrateNativePlaylist();
     return;
   }
-  setNextPreview(queue.ids[queue.index + 1] || null, true);
+  setNextPreview(queue.ids[queue.index + 1] || null, preferences.groupByCreator);
   const video = document.querySelector<HTMLVideoElement>('video.html5-main-video');
   if (video && video !== attached) {
     attached?.removeEventListener('ended',ended,true);
