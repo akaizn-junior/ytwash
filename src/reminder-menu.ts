@@ -1,4 +1,5 @@
 /** Reuse YouTube's native menu renderer and its existing theme styles. */
+export {};
 let selected: { id: string; title: string } | null = null;
 let entries = new Map<string, { id: string; title?: string; creator?: string }>();
 let pending = false;
