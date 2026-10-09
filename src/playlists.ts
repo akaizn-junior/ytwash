@@ -1,5 +1,5 @@
 /** Local indexes of visible native playlist rows, isolated by playlist ID. */
-export type PlaylistEntry = { id: string; creator: string; key: string };
+export type PlaylistEntry = { id: string; creator: string; key: string; title?: string };
 export type PlaylistIndex = { entries: PlaylistEntry[]; order?: string[]; indexedAt: number };
 export function creatorOrder<T extends PlaylistEntry>(entries: T[]): T[] {
   const groups = new Map<string, T[]>();
@@ -15,7 +15,7 @@ export function playlistId(): string | null {
   return id && /^[\w-]{1,200}$/.test(id) ? id : null;
 }
 export function indexPlaylist(id: string, entries: PlaylistEntry[]): void {
-  const bounded = entries.slice(0, 5000).map(({ id, creator, key }) => ({ id, creator, key }));
+  const bounded = entries.slice(0, 5000).map(({ id, creator, key, title }) => ({ id, creator, key, ...(typeof title === 'string' ? { title: title.slice(0, 200) } : {}) }));
   const signature = JSON.stringify(bounded);
   if (indexedSignatures.get(id) === signature) return;
   indexedSignatures.set(id, signature);
@@ -37,3 +37,4 @@ export function readPlaylist(id: string): Promise<PlaylistIndex | null> {
     resolve(value as PlaylistIndex);
   }));
 }
+
