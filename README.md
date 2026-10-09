@@ -6,7 +6,7 @@
 <p align="center"><strong>watch it. clear it.</strong></p>
 <p align="center">Save your place. Watch playlists by creator. Clear finished videos automatically.</p>
 <p align="center">
-  <a href="https://github.com/akaizn-junior/ytwash/releases">Download the alpha</a> ·
+  <a href="https://github.com/akaizn-junior/ytwash/releases/tag/v0.3.0-beta">Download the beta</a> ·
   <a href="https://akaizn-junior.github.io/ytwash/">Website</a> ·
   <a href="https://github.com/akaizn-junior/ytwash/issues">Get help</a>
 </p>
@@ -30,7 +30,7 @@ The `publishing-assets` ZIP contains graphics, not the extension. “Source code
 
 **Chrome / Edge:** Extract the ZIP into a folder you will keep. Open `chrome://extensions` or `edge://extensions`, enable **Developer mode**, choose **Load unpacked**, and select the folder containing `manifest.json`. Refresh your YouTube tabs.
 
-**Firefox:** Extract the Firefox ZIP. Open `about:debugging#/runtime/this-firefox`, choose **Load Temporary Add-on**, and select `manifest.json`. This unsigned alpha is for temporary testing; Firefox removes it when the browser closes.
+**Firefox:** Extract the Firefox ZIP. Open `about:debugging#/runtime/this-firefox`, choose **Load Temporary Add-on**, and select `manifest.json`. This unsigned beta is for temporary testing; Firefox removes it when the browser closes.
 
 **Update:** Extract the new browser ZIP over your existing extension folder, reload YTWash in your browser’s extension manager, and refresh YouTube. Keep the same installation to retain local settings and saved positions. For Firefox, reload or re-add the temporary add-on.
 
@@ -48,7 +48,7 @@ Saving and resuming are built in; they have no switches in Options.
 
 Click the YTWash toolbar icon to open Options, then enable **Group playlists by creator**. This works across your YouTube playlists, including the watch-page sidebar. Creators with multiple videos appear together; single-video creators appear under **Everything else**.
 
-**Play all**, **Next**, **Previous**, and automatic advancement follow the creator order. Clicking a video starts from that point in the grouped order. Newly loaded videos update the order. Turn grouping off to restore YouTube’s native ordering.
+**Play all**, **Next**, **Previous**, **Shift+N**, and automatic advancement follow the creator order. The Next preview shows the queued video's thumbnail with a red lightning icon beside the shortcut. Turning grouping off restores YouTube's native preview. Clicking a video starts from that point in the grouped order. Newly loaded videos update the order. Turn grouping off to restore YouTube’s native ordering.
 
 Only videos YouTube has loaded or YTWash has previously indexed can be grouped. Private playlists require your existing YouTube sign-in.
 
@@ -67,9 +67,17 @@ Open Options by clicking the YTWash toolbar icon, or through your browser’s ex
 | Preference | What it does |
 | --- | --- |
 | **Group playlists by creator** | Groups playlist and sidebar videos, and uses that order for playback. |
+| **Remind me to watch** | Set a one-time reminder from any video’s menu; manage reminders in Options. |
+| **When** | Later today, in 3 days, in a week, or a date and time you choose. |
 | **Remove completed videos from playlists** | Removes finished videos from the current playlist and clears their saved positions. |
 
 Save, resume, and creator-order playback are built-in features, not separate switches.
+
+### Remind me to watch
+
+Choose **Remind me to watch** in a video’s menu on Home, search, playlists, the watch-page sidebar, video actions, or Shorts. One click schedules a reminder for **Later today**; there is no time picker on YouTube. Change the default timing and manage reminders in Options. A custom date applies while it is in the future; after it expires, menu actions use Later today. Later today means 6 pm, or at least one hour later if it is already evening, capped before midnight.
+
+Reminders happen once. Choose **Watch now** to open the video, **Remind me again** to choose another time, or dismiss the notification. Watching a video to the end cancels its reminder. Reminder menus use YouTube's own menu elements and follow its light or dark theme.
 
 ## Your settings and privacy
 
@@ -86,16 +94,10 @@ Settings, saved positions, and playlist order stay in your browser profile. They
 **A finished video stays in the playlist?** Check that cleanup is enabled and that you can edit the playlist. If the native dialog remains open or requires a manual click, include that detail in your bug report.
 
 
-YTWash is an experimental alpha distributed directly through GitHub. Automated Chromium and Firefox tests use simulated YouTube pages; signed-in YouTube behavior still needs verification, and interface changes can affect features.
+YTWash is an experimental beta distributed directly through GitHub. Automated Chromium and Firefox tests use simulated YouTube pages; signed-in YouTube behavior still needs verification, and interface changes can affect features.
 
 If something stops working, reload the extension and refresh YouTube. [Report a problem](https://github.com/akaizn-junior/ytwash/issues) with your browser, release version, and what happened. Do not include private account details.
 
 [Project site](https://akaizn-junior.github.io/ytwash/) · [MIT license](LICENSE)
 
 YTWash is not affiliated with or endorsed by YouTube or Google.
-
-### Remind me to watch
-
-Choose **Remind me to watch** in a video menu on Home, search results, playlists, or the watch-page sidebar and video actions. One click schedules a browser notification for later today (three hours later, capped before midnight). It does not open a time picker or change playlist membership. Clicking the notification opens the video; saved timestamps still apply.
-
-Set a different default in **Options → Reminders**: tomorrow at 6 pm or in one week. Options also lists pending reminders with Cancel buttons. Clicking the action again replaces that video’s reminder. Timing uses your local timezone and changes apply to new reminders. Reminders stay in this browser profile. Your browser must be running, and system notifications must be allowed; overdue reminders are delivered when the browser starts again.

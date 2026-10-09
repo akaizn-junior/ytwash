@@ -589,3 +589,42 @@ for (const {enabled, list} of [{enabled:false,list:'WL'}, {enabled:true,list:'WL
     } finally { await context.close(); }
   });
 }
+
+
+test('Next preview and Shift+N follow creator order and restore native behavior', async () => {
+  const third = '12345678901';
+  const { context, page } = await fixture();
+  try {
+    await page.goto('https://www.youtube.com/watch?v=' + FIRST + '&list=WL');
+    const options = await openOptions(context);
+    await options.evaluate(async ({ first, second, third }) => chrome.storage.local.set({
+      'ytwash:group-by-creator': true,
+      'ytwash:playlist:WL': { entries: [
+        { id: first, creator: 'A', key: 'a' }, { id: second, creator: 'B', key: 'b' },
+        { id: third, creator: 'A', key: 'a' },
+      ], indexedAt: Date.now() },
+    }), { first: FIRST, second: SECOND, third });
+    await page.reload();
+    await expect.poll(() => page.evaluate(() => !!sessionStorage.getItem('ytwash:creator-queue:v1'))).toBe(true);
+    await page.evaluate(() => {
+      const controls = document.createElement('div');
+      controls.innerHTML = '<button class="ytp-next-button">Next</button><div class="ytp-tooltip ytp-next-button-tooltip"><span class="ytp-tooltip-text">NEXT <span class="ytp-tooltip-keyboard-shortcut">SHIFT+N</span></span><div class="ytp-tooltip-bg" style="background-image:url(https://example.test/native.jpg)"></div></div><input id="typing">';
+      document.body.append(controls);
+    });
+    const background = page.locator('.ytp-tooltip-bg');
+    await expect(background).toHaveCSS('background-image', new RegExp(third));
+    await expect(page.locator('.ytwash-next-lightning')).toHaveCount(1);
+    await expect(page.locator('.ytp-tooltip-keyboard-shortcut')).toHaveText('SHIFT+N');
+    await page.locator('#typing').focus();
+    await page.keyboard.press('Shift+N');
+    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + FIRST + '&list=WL');
+    await options.locator('[data-key="ytwash:group-by-creator"]').uncheck();
+    await expect(background).toHaveCSS('background-image', /native.jpg/);
+    await expect(page.locator('.ytwash-next-lightning')).toHaveCount(0);
+    await options.locator('[data-key="ytwash:group-by-creator"]').check();
+    await expect(background).toHaveCSS('background-image', new RegExp(third));
+    await page.locator('.ytp-next-button').focus();
+    await page.keyboard.press('Shift+N');
+    await expect(page).toHaveURL('https://www.youtube.com/watch?v=' + third + '&list=WL');
+  } finally { await context.close(); }
+});

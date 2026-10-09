@@ -13,6 +13,8 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install
+      - name: Test reminder scheduling
+        run: npm run test:reminders
       - name: Typecheck
         run: npm run typecheck
       - name: Build extension
@@ -69,3 +71,4 @@ jobs:
             playwright-report/
             test-results/
           if-no-files-found: ignore
+

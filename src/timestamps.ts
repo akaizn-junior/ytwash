@@ -65,6 +65,7 @@ async function saveCurrent(id: string, seconds: number): Promise<void> {
       }
     }
     if (watchId() !== id || checked(checkbox) !== true) return;
+    chrome.storage.local.remove('ytwash:watched:' + id);
     // Confirmed additions immediately update the stored Watch Later order.
     const channel = document.querySelector<HTMLAnchorElement>('ytd-watch-metadata ytd-channel-name a[href], #owner #channel-name a[href]');
     const creator = channel?.textContent?.trim();
@@ -74,7 +75,7 @@ async function saveCurrent(id: string, seconds: number): Promise<void> {
         const path = channel!.getAttribute('href')?.split('?')[0] || '';
         const key = cached?.entries.find(entry => entry.creator === creator)?.key ||
           (path.startsWith('/channel/') ? path : path.startsWith('/@') ? path.toLowerCase() : 'name:' + creator.toLowerCase());
-        indexPlaylist('WL', [{ id, creator, key }, ...(cached?.entries || [])]);
+        indexPlaylist('WL', [{ id, creator, key, title: document.querySelector('ytd-watch-metadata h1, #title h1')?.textContent?.trim() || undefined }, ...(cached?.entries || [])]);
       }
     }
     closeSaveChooser();
@@ -187,3 +188,4 @@ window.addEventListener('popstate', tick);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
 window.setInterval(tick, 1500);
 tick();
+
