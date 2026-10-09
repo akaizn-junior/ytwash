@@ -6,6 +6,10 @@ let pending = false;
 const menus = new Map<HTMLElement, { original: HTMLElement[]; display: Map<HTMLElement, [string, string]>; source: HTMLElement }>();
 function nativeItem(source: HTMLElement, label: string, action: () => void): HTMLElement {
   const item = source.cloneNode(true) as HTMLElement;
+  if (item.querySelector('.ytwash-save-lightning')) {
+    item.querySelectorAll('.ytwash-save-lightning').forEach(icon => icon.remove());
+    item.style.removeProperty('padding-right'); item.style.removeProperty('position');
+  }
   item.removeAttribute('id'); item.setAttribute('data-ytwash-reminder', '');
   item.removeAttribute('hidden'); item.style.removeProperty('display');
   // Supply only presentation data, never copy a native service endpoint.
