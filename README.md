@@ -6,7 +6,7 @@
 <p align="center"><strong>watch it. clear it.</strong></p>
 <p align="center">Save your place. Watch playlists by creator. Clear finished videos automatically.</p>
 <p align="center">
-  <a href="https://github.com/akaizn-junior/ytwash/releases/tag/v0.2.0-beta">Download the beta</a> ·
+  <a href="https://github.com/akaizn-junior/ytwash/releases/tag/v0.3.0-beta">Download the beta</a> ·
   <a href="https://akaizn-junior.github.io/ytwash/">Website</a> ·
   <a href="https://github.com/akaizn-junior/ytwash/issues">Get help</a>
 </p>
@@ -48,7 +48,7 @@ Saving and resuming are built in; they have no switches in Options.
 
 Click the YTWash toolbar icon to open Options, then enable **Group playlists by creator**. This works across your YouTube playlists, including the watch-page sidebar. Creators with multiple videos appear together; single-video creators appear under **Everything else**.
 
-**Play all**, **Next**, **Previous**, and automatic advancement follow the creator order. Clicking a video starts from that point in the grouped order. Newly loaded videos update the order. Turn grouping off to restore YouTube’s native ordering.
+**Play all**, **Next**, **Previous**, **Shift+N**, and automatic advancement follow the creator order. The Next preview shows the queued video's thumbnail with a red lightning icon beside the shortcut. Turning grouping off restores YouTube's native preview. Clicking a video starts from that point in the grouped order. Newly loaded videos update the order. Turn grouping off to restore YouTube’s native ordering.
 
 Only videos YouTube has loaded or YTWash has previously indexed can be grouped. Private playlists require your existing YouTube sign-in.
 
@@ -101,4 +101,3 @@ If something stops working, reload the extension and refresh YouTube. [Report a 
 [Project site](https://akaizn-junior.github.io/ytwash/) · [MIT license](LICENSE)
 
 YTWash is not affiliated with or endorsed by YouTube or Google.
-
