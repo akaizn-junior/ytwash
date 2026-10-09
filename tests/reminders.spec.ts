@@ -45,20 +45,28 @@ for (const dark of [false, true]) test('reminder choices reuse YouTube menu styl
       <ytd-menu-popup-renderer><ytd-menu-service-item-renderer><yt-formatted-string>Save</yt-formatted-string></ytd-menu-service-item-renderer></ytd-menu-popup-renderer>
       </body></html>` }));
     await page.goto('https://www.youtube.com/watch?v=abcdefghijk&list=WL');
+    console.log(testInfo.title + ': page loaded');
     await expect(page.locator('#ytwash-save-for-later')).toHaveCount(0);
     const native = page.locator('ytd-menu-service-item-renderer').filter({ hasText: /^Save$/ });
     const remind = page.getByRole('menuitem', { name: 'Remind me to watch' });
     await expect(remind).toBeVisible();
+    console.log(testInfo.title + ': menu ready');
     expect(await remind.evaluate(el => getComputedStyle(el).color)).toBe(await native.evaluate(el => getComputedStyle(el).color));
     expect(await remind.evaluate(el => getComputedStyle(el).font)).toBe(await native.evaluate(el => getComputedStyle(el).font));
+    console.log(testInfo.title + ': styles matched');
     await remind.click();
+    console.log(testInfo.title + ': choices opened');
     await expect(page.getByRole('menuitem', { name: 'Later today', exact: true })).toBeVisible();
     await expect(page.getByRole('menuitem', { name: 'In 3 days', exact: true })).toBeVisible();
     await expect(page.getByRole('menuitem', { name: 'In a week', exact: true })).toBeVisible();
     await expect(page.getByRole('menuitem', { name: 'Choose a date and time…', exact: true })).toBeVisible();
+    console.log(testInfo.title + ': choices visible');
     await page.screenshot({ path: testInfo.outputPath('reminder-' + (dark ? 'dark' : 'light') + '.png') });
+    console.log(testInfo.title + ': screenshot captured');
     await page.getByRole('menuitem', { name: 'In a week', exact: true }).click();
+    console.log(testInfo.title + ': reminder selected');
     await expect(page.getByRole('status')).toContainText('We’ll remind you');
+    console.log(testInfo.title + ': confirmation shown');
     await expect.poll(() => options.evaluate(async () => (await chrome.storage.local.get('ytwash:reminder:abcdefghijk'))['ytwash:reminder:abcdefghijk']?.title)).toBe('First video');
     await expect.poll(() => options.evaluate(() => document.documentElement.hasAttribute('dark'))).toBe(dark);
   } finally { await context.close(); }
