@@ -1,5 +1,4 @@
 import { readPlaylist, indexPlaylist } from './playlists';
-import { saveForLater } from './reminder-queue';
 import { preferences, preferencesReady } from './preferences';
 import { watchId, saveControls, waitForWatchLater, checked, closeSaveChooser } from './native-save';
 /** Persist explicit resume points locally; never write to YouTube's private APIs. */
@@ -51,7 +50,6 @@ async function saveCurrent(id: string, seconds: number): Promise<void> {
     // Persist the user's explicit Save action even when YouTube's chooser
     // changes markup or cannot expose a confirmed Watch Later state.
     if (!await store(id, seconds)) return;
-    saveForLater(id);
     if (watchId() !== id) return;
     // Let the trusted native Save click open its playlist chooser normally.
     const checkbox = await waitForWatchLater(id);
@@ -67,6 +65,7 @@ async function saveCurrent(id: string, seconds: number): Promise<void> {
       }
     }
     if (watchId() !== id || checked(checkbox) !== true) return;
+    chrome.storage.local.remove('ytwash:watched:' + id);
     // Confirmed additions immediately update the stored Watch Later order.
     const channel = document.querySelector<HTMLAnchorElement>('ytd-watch-metadata ytd-channel-name a[href], #owner #channel-name a[href]');
     const creator = channel?.textContent?.trim();
@@ -76,7 +75,7 @@ async function saveCurrent(id: string, seconds: number): Promise<void> {
         const path = channel!.getAttribute('href')?.split('?')[0] || '';
         const key = cached?.entries.find(entry => entry.creator === creator)?.key ||
           (path.startsWith('/channel/') ? path : path.startsWith('/@') ? path.toLowerCase() : 'name:' + creator.toLowerCase());
-        indexPlaylist('WL', [{ id, creator, key }, ...(cached?.entries || [])]);
+        indexPlaylist('WL', [{ id, creator, key, title: document.querySelector('ytd-watch-metadata h1, #title h1')?.textContent?.trim() || undefined }, ...(cached?.entries || [])]);
       }
     }
     closeSaveChooser();
