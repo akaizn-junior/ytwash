@@ -38,7 +38,7 @@ async function deliver(name: string): Promise<void> {
   const reminder = values[name];
   if (!valid(reminder)) return;
   if (values['ytwash:watched:' + reminder.id] === true) { await chrome.storage.local.remove(name); return; }
-  const options: chrome.notifications.NotificationOptions = {
+  const options: chrome.notifications.NotificationOptions<true> = {
     type: 'basic', iconUrl: chrome.runtime.getURL('icons/icon-128.png'),
     title: 'Time to watch', message: reminder.title,
   };
