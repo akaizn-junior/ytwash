@@ -67,7 +67,7 @@ Open Options by clicking the YTWash toolbar icon, or through your browser’s ex
 | Preference | What it does |
 | --- | --- |
 | **Group playlists by creator** | Groups playlist and sidebar videos, and uses that order for playback. |
-| **Remind me to watch** | Choose a Watch Later video and set a one-time reminder. |
+| **Remind me to watch** | Set a one-time reminder from any video’s menu; manage reminders in Options. |
 | **When** | Later today, in 3 days, in a week, or a date and time you choose. |
 | **Remove completed videos from playlists** | Removes finished videos from the current playlist and clears their saved positions. |
 
@@ -75,7 +75,7 @@ Save, resume, and creator-order playback are built-in features, not separate swi
 
 ### Remind me to watch
 
-Open a video's menu in Watch Later and choose **Remind me to watch**. Pick **Later today**, **In 3 days**, **In a week**, or **Choose a date and time…**. You can also set and cancel reminders in Options.
+Choose **Remind me to watch** in a video’s menu on Home, search, playlists, the watch-page sidebar, video actions, or Shorts. One click schedules a reminder for **Later today**; there is no time picker on YouTube. Change the default timing and manage reminders in Options. A custom date applies while it is in the future; after it expires, menu actions use Later today. Later today means 6 pm, or at least one hour later if it is already evening, capped before midnight.
 
 Reminders happen once. Choose **Watch now** to open the video, **Remind me again** to choose another time, or dismiss the notification. Watching a video to the end cancels its reminder. Reminder menus use YouTube's own menu elements and follow its light or dark theme.
 

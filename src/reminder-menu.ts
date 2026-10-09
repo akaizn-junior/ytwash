@@ -32,34 +32,23 @@ function restoreMenu(popup: HTMLElement): void {
   }
   menus.delete(popup);
 }
-function choices(popup: HTMLElement, video: { id: string; title: string }): void {
+function scheduleReminder(popup: HTMLElement, video: { id: string; title: string }): void {
   const state = menus.get(popup);
   if (!state) return;
-  state.original.forEach(item => {
-    if (!state.display.has(item)) state.display.set(item, [item.style.getPropertyValue('display'), item.style.getPropertyPriority('display')]);
-    item.style.setProperty('display', 'none', 'important');
+  chrome.runtime.sendMessage({ type: 'ytwash:quick-reminder', id: video.id, title: video.title }, response => {
+    const message = chrome.runtime.lastError ? 'Could not set your reminder. Try again.' : response?.error ||
+      (response?.dueAt ? 'We’ll remind you ' + new Date(response.dueAt).toLocaleString() + '.' : 'Could not set your reminder.');
+    popup.querySelectorAll('[data-ytwash-reminder]').forEach(item => item.remove());
+    const confirmation = nativeItem(state.source, message, () => restoreMenu(popup));
+    confirmation.setAttribute('role', 'status'); confirmation.setAttribute('aria-live', 'polite');
+    (state.source.parentElement || popup).append(confirmation);
   });
-  popup.querySelectorAll('[data-ytwash-reminder]').forEach(item => item.remove());
-  const parent = state.source.parentElement || popup;
-  for (const [preset, label] of [['later-today', 'Later today'], ['three-days', 'In 3 days'], ['week', 'In a week'], ['custom', 'Choose a date and time…']]) {
-    parent.append(nativeItem(state.source, label, () => {
-      const type = preset === 'custom' ? 'ytwash:open-custom-reminder' : 'ytwash:schedule-reminder';
-      chrome.runtime.sendMessage({ type, id: video.id, title: video.title, preset }, response => {
-        const message = chrome.runtime.lastError ? 'Could not set your reminder. Try again.' : response?.error ||
-          (response?.dueAt ? 'We’ll remind you ' + new Date(response.dueAt).toLocaleString(undefined, { weekday: 'long', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + '.' : 'Choose a date and time in Options.');
-        popup.querySelectorAll('[data-ytwash-reminder]').forEach(item => item.remove());
-        const confirmation = nativeItem(state.source, message, () => restoreMenu(popup));
-        confirmation.setAttribute('role', 'status'); confirmation.setAttribute('aria-live', 'polite'); parent.append(confirmation);
-      });
-    }));
-  }
-  parent.append(nativeItem(state.source, 'Back', () => { restoreMenu(popup); reconcile(); }));
-  parent.querySelector<HTMLElement>('[data-ytwash-reminder]')?.focus();
 }
 function current(): { id: string; title: string } | null {
-  if (location.pathname !== '/watch') return selected;
+  if (selected) return selected;
+  if (location.pathname !== '/watch') return null;
   const id = new URLSearchParams(location.search).get('v');
-  if (!id || !/^[\w-]{11}$/.test(id) || (new URLSearchParams(location.search).get('list') !== 'WL' && !entries.has(id))) return null;
+  if (!id || !/^[\w-]{11}$/.test(id)) return null;
   return { id, title: document.querySelector('ytd-watch-metadata h1, #title h1')?.textContent?.trim() || entries.get(id)?.title || 'A Watch Later video' };
 }
 function reconcile(): void {
@@ -71,7 +60,7 @@ function reconcile(): void {
     const original = [...popup.querySelectorAll<HTMLElement>('ytd-menu-service-item-renderer, ytd-menu-navigation-item-renderer, yt-list-item-view-model')];
     const source = original[0]; if (!source || !source.parentElement) continue;
     menus.set(popup, { original, display: new Map(), source });
-    source.parentElement.append(nativeItem(source, 'Remind me to watch', () => choices(popup, video)));
+    source.parentElement.append(nativeItem(source, 'Remind me to watch', () => scheduleReminder(popup, video)));
   }
 }
 function schedule(): void {
@@ -87,14 +76,13 @@ function loadEntries(): void {
 }
 document.addEventListener('click', event => {
   if (!(event.target instanceof Element) || event.target.closest('[data-ytwash-reminder]')) return;
-  if (location.pathname === '/playlist' && new URLSearchParams(location.search).get('list') === 'WL') {
-    const row = event.target.closest('ytd-playlist-video-renderer');
-    const link = row?.querySelector<HTMLAnchorElement>('a#video-title');
-    const id = link && new URL(link.href, location.origin).searchParams.get('v');
-    selected = id && /^[\w-]{11}$/.test(id) ? { id, title: link!.textContent?.trim() || 'A Watch Later video' } : null;
-  }
+  const row = event.target.closest('ytd-rich-item-renderer,ytd-video-renderer,ytd-grid-video-renderer,ytd-compact-video-renderer,ytd-playlist-video-renderer,ytd-playlist-panel-video-renderer,yt-lockup-view-model,ytd-reel-video-renderer,ytd-reel-item-renderer');
+  const link = row?.querySelector<HTMLAnchorElement>('a[href*="/watch?"],a[href*="/shorts/"]');
+  const url = link ? new URL(link.href, location.origin) : new URL(location.href);
+  const id = url.searchParams.get('v') || url.pathname.match(/^\/shorts\/([^/]+)/)?.[1];
+  selected = row && id && /^[\w-]{11}$/.test(id) ? { id, title: row.querySelector('#video-title,h3')?.textContent?.trim() || 'YouTube video' } : null;
   // Restore reused native popups before opening them for a different video.
-  if (event.target.closest('ytd-menu-renderer button, yt-icon-button button')) for (const popup of menus.keys()) restoreMenu(popup);
+  if (event.target.closest('ytd-menu-renderer button, yt-icon-button button, button[aria-label*="More"], button[aria-label*="more"]')) for (const popup of menus.keys()) restoreMenu(popup);
   schedule();
 }, true);
 window.addEventListener('yt-navigate-finish', () => { selected = null; for (const popup of menus.keys()) restoreMenu(popup); schedule(); });

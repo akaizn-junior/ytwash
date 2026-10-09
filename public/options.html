@@ -46,7 +46,7 @@
     <label><input type="checkbox" data-key="ytwash:auto-remove-completed" data-default="false"><span>Remove completed videos from playlists<small>Automatically remove a finished video from the playlist you are watching, after at least five seconds of playback. Clears its saved position too. Outside a playlist, cleanup applies to Watch Later. Your tab stays open.</small></span></label>
   </fieldset>
   <fieldset disabled id="reminders">
-    <legend>Watch Later reminders</legend>
+    <legend>Watch reminders</legend>
     <label class="reminder-label" for="reminder-video">Remind me to watch<select id="reminder-video" aria-label="Video"></select></label>
     <p id="no-videos" hidden>Open <a href="https://www.youtube.com/playlist?list=WL" target="_blank" rel="noopener">Watch Later</a> to choose a video.</p>
     <label class="reminder-label" for="reminder-time">When<select id="reminder-time">
@@ -57,7 +57,7 @@
     </select></label>
     <input id="reminder-date" type="datetime-local" aria-label="Date and time" hidden>
     <button id="set-reminder" type="button" disabled>Remind me</button>
-    <p>You can also choose <strong>Remind me to watch</strong> from a video’s menu in Watch Later.</p>
+    <p>Choose <strong>Remind me to watch</strong> in any video’s menu to schedule with one click. Later today is the default. The timing above applies to future menu actions; an expired custom date falls back to later today.</p>
     <section id="upcoming-section" hidden><h3>Upcoming reminders</h3><ul id="upcoming"></ul></section>
   </fieldset>
   <p id="status" role="status" aria-live="polite"></p>

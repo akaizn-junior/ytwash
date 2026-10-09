@@ -53,12 +53,17 @@ function render() {
     document.getElementById('upcoming-section').hidden = !upcoming.children.length;
   });
 }
-chrome.storage.local.get([...inputs.map(input => input.dataset.key), presetKey], values => {
+chrome.storage.local.get([...inputs.map(input => input.dataset.key), presetKey, 'ytwash:reminder-custom-date'], values => {
   if (chrome.runtime.lastError) { status.textContent = 'Could not load your settings. Try again.'; return; }
   for (const input of inputs) input.checked = typeof values[input.dataset.key] === 'boolean' ? values[input.dataset.key] : false;
   preset.value = ['later-today', 'three-days', 'week', 'custom'].includes(values[presetKey]) ? values[presetKey] : 'later-today';
   if (new URLSearchParams(location.search).has('custom')) preset.value = 'custom';
   date.hidden = preset.value !== 'custom';
+  const savedDate = values['ytwash:reminder-custom-date'];
+  if (typeof savedDate === 'number' && Number.isFinite(savedDate)) {
+    const local = new Date(savedDate);
+    date.value = new Date(savedDate - local.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  }
   document.getElementById('preferences').disabled = false;
   document.getElementById('reminders').disabled = false;
   render();
@@ -74,6 +79,10 @@ for (const input of inputs) input.addEventListener('change', () => {
 preset.addEventListener('change', () => {
   date.hidden = preset.value !== 'custom';
   chrome.storage.local.set({ [presetKey]: preset.value });
+});
+date.addEventListener('change', () => {
+  const when = new Date(date.value).getTime();
+  if (Number.isFinite(when)) chrome.storage.local.set({ 'ytwash:reminder-custom-date': when });
 });
 schedule.addEventListener('click', () => {
   const when = new Date(date.value).getTime();

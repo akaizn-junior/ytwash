@@ -32,7 +32,7 @@ test('one-time reminders have simple presets, confirmations, and cancel; no loca
     await expect(options.locator('#status')).toHaveText('Choose a future date and time.');
   } finally { await context.close(); }
 });
-for (const dark of [false, true]) test('reminder choices reuse YouTube menu styles in ' + (dark ? 'dark' : 'light') + ' mode', async ({}, testInfo) => {
+for (const dark of [false, true]) test('one-click reminders reuse YouTube menu styles in ' + (dark ? 'dark' : 'light') + ' mode', async ({}, testInfo) => {
   const { context, options } = await fixture();
   try {
     const page = await context.newPage();
@@ -52,12 +52,9 @@ for (const dark of [false, true]) test('reminder choices reuse YouTube menu styl
     expect(await remind.evaluate(el => getComputedStyle(el).color)).toBe(await native.evaluate(el => getComputedStyle(el).color));
     expect(await remind.evaluate(el => getComputedStyle(el).font)).toBe(await native.evaluate(el => getComputedStyle(el).font));
     await remind.click();
-    await expect(page.getByRole('menuitem', { name: 'Later today', exact: true })).toBeVisible();
-    await expect(page.getByRole('menuitem', { name: 'In 3 days', exact: true })).toBeVisible();
-    await expect(page.getByRole('menuitem', { name: 'In a week', exact: true })).toBeVisible();
-    await expect(page.getByRole('menuitem', { name: 'Choose a date and time…', exact: true })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: 'Later today', exact: true })).toHaveCount(0);
+    await expect(native).toBeVisible();
     await page.screenshot({ path: testInfo.outputPath('reminder-' + (dark ? 'dark' : 'light') + '.png') });
-    await page.getByRole('menuitem', { name: 'In a week', exact: true }).click();
     await expect(page.getByRole('status')).toContainText('We’ll remind you');
     await expect.poll(() => options.evaluate(async () => (await chrome.storage.local.get('ytwash:reminder:abcdefghijk'))['ytwash:reminder:abcdefghijk']?.title)).toBe('First video');
     await expect.poll(() => options.evaluate(() => document.documentElement.hasAttribute('dark'))).toBe(dark);

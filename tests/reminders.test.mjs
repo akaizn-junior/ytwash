@@ -28,7 +28,7 @@ function harness(initial = {}) {
   runInContext(source, context);
   const flush = async () => { for (let i = 0; i < 4; i++) await runInContext('work', context); };
   return { data, alarms, notices, tabs, events, change, flush,
-    message: message => new Promise(resolve => events.message(message, { url: 'chrome-extension://test/options.html' }, resolve)),
+    message: (message, sender = { url: 'chrome-extension://test/options.html' }) => new Promise(resolve => events.message(message, sender, resolve)),
     fire: async id => { alarms.delete('ytwash:reminder:' + id); events.alarm({ name: 'ytwash:reminder:' + id }); await flush(); },
   };
 }
@@ -92,4 +92,20 @@ test('notification actions watch, reschedule explicitly, or dismiss without repe
   h.events.close('ytwash:reminder-notice:' + FIRST, true); await h.flush(); assert.equal(h.alarms.size, 0);
   const invalid = await h.message({ type: 'ytwash:schedule-reminder', id: '12345678901', preset: 'week' }); await h.flush();
   assert.match(invalid.error, /Watch Later/);
+});
+
+test('quick reminders work for unindexed videos and use the Options default', async () => {
+  const h = harness(); await h.flush();
+  const sender = { tab: { id: 1 }, url: 'https://www.youtube.com/results?search_query=test' };
+  const first = await h.message({ type: 'ytwash:quick-reminder', id: FIRST, title: 'Search video' }, sender);
+  assert.equal(new Date(first.dueAt).toDateString(), new Date().toDateString());
+  assert.equal(h.data['ytwash:reminder:' + FIRST].title, 'Search video');
+  h.change({ 'ytwash:reminder-default': 'week' });
+  const week = await h.message({ type: 'ytwash:quick-reminder', id: FIRST, title: 'Search video' }, sender);
+  assert.ok(week.dueAt > first.dueAt + 5 * 86400000);
+  h.change({ 'ytwash:reminder-default': 'custom', 'ytwash:reminder-custom-date': Date.now() - 1000 });
+  const expired = await h.message({ type: 'ytwash:quick-reminder', id: FIRST }, sender);
+  assert.equal(new Date(expired.dueAt).toDateString(), new Date().toDateString());
+  const rejected = await h.message({ type: 'ytwash:quick-reminder', id: SECOND });
+  assert.ok(rejected.error);
 });

@@ -90,16 +90,22 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
     });
     return true;
   }
-  if (message?.type !== 'ytwash:schedule-reminder') return;
+  if (message?.type !== 'ytwash:schedule-reminder' && message?.type !== 'ytwash:quick-reminder') return;
   enqueue(async () => {
-    const id = message.id, when = dueAt(message.preset, message.dueAt);
+    const quick = message.type === 'ytwash:quick-reminder';
+    const onYouTube = !!sender.tab && !!sender.url && new URL(sender.url).origin === 'https://www.youtube.com';
+    if (quick && !onYouTube) { reply({ error: 'Choose a video on YouTube.' }); return; }
+    const settings = quick ? await chrome.storage.local.get(['ytwash:reminder-default', 'ytwash:reminder-custom-date']) : {};
+    const preset = quick ? settings['ytwash:reminder-default'] || 'later-today' : message.preset;
+    const custom = quick ? settings['ytwash:reminder-custom-date'] : message.dueAt;
+    const id = message.id, when = dueAt(preset, custom) || (quick ? dueAt('later-today', null) : null);
     if (!validId(id) || when === null || when <= Date.now()) { reply({ error: 'Choose a future date and time.' }); return; }
     const values = await chrome.storage.local.get(['ytwash:playlist:WL', NOTICE + id, 'ytwash:reminder-draft:' + id]);
     const entry = values['ytwash:playlist:WL']?.entries?.find((item: { id?: string }) => item?.id === id);
     const notice = values[NOTICE + id], draft = values['ytwash:reminder-draft:' + id];
     const onWatchLater = sender.tab && sender.url && new URL(sender.url).hostname === 'www.youtube.com' && new URL(sender.url).searchParams.get('list') === 'WL';
-    if (!entry && !valid(notice) && !(draft?.id === id && typeof draft.title === 'string') && !onWatchLater) { reply({ error: 'Add this video to Watch Later first.' }); return; }
-    const title = (typeof message.title === 'string' && onWatchLater ? message.title : entry?.title || draft?.title || (valid(notice) ? notice.title : null)) || 'A Watch Later video';
+    if (!(quick && onYouTube) && !entry && !valid(notice) && !(draft?.id === id && typeof draft.title === 'string') && !onWatchLater) { reply({ error: 'Add this video to Watch Later first.' }); return; }
+    const title = (typeof message.title === 'string' && (onWatchLater || (quick && onYouTube)) ? message.title : entry?.title || draft?.title || (valid(notice) ? notice.title : null)) || 'A Watch Later video';
     const reminder: Reminder = { id, title: title.slice(0, 200), dueAt: when };
     try {
       await chrome.storage.local.set({ [PREFIX + id]: reminder, ['ytwash:watched:' + id]: false });
