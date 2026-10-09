@@ -3,13 +3,14 @@ import './cleanup';
 import './sidebar';
 import './timestamps';
 import './reminder-queue';
+import './reminder-menu';
 import { preferences, preferencesReady, preferenceKeys } from './preferences';
 import { playlistId, indexPlaylist, creatorOrder } from './playlists';
 
 /** Apply the stored grouping preference without adding page controls. */
 const VIDEO_SELECTOR = 'ytd-playlist-video-renderer';
 const GROUP_CLASS = 'ytwash-native-group';
-type Entry = { element: HTMLElement; id: string; creator: string; key: string; index: number };
+type Entry = { element: HTMLElement; id: string; creator: string; key: string; index: number; title: string };
 
 const originalOrder = new Map<HTMLElement, number>();
 let nextIndex = 0;
@@ -36,7 +37,7 @@ function entryFor(el: HTMLElement): Entry | null {
   const path = channel?.getAttribute('href')?.split('?')[0] || '';
   const key = path.startsWith('/channel/') ? path : path.startsWith('/@') ? path.toLowerCase() : 'name:' + creator.toLowerCase();
   if (!originalOrder.has(el)) originalOrder.set(el, nextIndex++);
-  return { element: el, id, creator, key, index: originalOrder.get(el)! };
+  return { element: el, id, creator, key, index: originalOrder.get(el)!, title: title.textContent?.trim().slice(0, 200) || '' };
 }
 
 function playlistParent(): HTMLElement | null {

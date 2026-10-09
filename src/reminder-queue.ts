@@ -1,9 +1,5 @@
-/** Account-free saves are local and do not require native playlist membership. */
-export function saveForLater(id: string): void {
-  if (!/^[\w-]{11}$/.test(id)) return;
-  const title = document.querySelector('ytd-watch-metadata h1, #title h1')?.textContent?.trim() || document.title.replace(/ - YouTube$/, '') || 'A saved video';
-  chrome.storage.local.set({ ['ytwash:later:' + id]: { title: title.slice(0, 200), savedAt: Date.now() }, ['ytwash:watched:' + id]: false });
-}
+/** Finished videos no longer need a reminder. */
+export {};
 let video: HTMLVideoElement | null = null;
 let current = '';
 let seconds = 0;
@@ -12,23 +8,10 @@ let listeners: AbortController | null = null;
 function mount(): void {
   const id = location.pathname === '/watch' ? new URLSearchParams(location.search).get('v') : null;
   const active = document.querySelector<HTMLVideoElement>('video.html5-main-video');
-  const button = document.getElementById('ytwash-save-for-later');
   if (!id || !/^[\w-]{11}$/.test(id)) {
-    button?.remove(); listeners?.abort(); current = ''; video = null; return;
-  }
-  const parent = document.querySelector('ytd-watch-metadata #actions, ytd-watch-metadata, #above-the-fold');
-  if (parent && !button) {
-    const save = document.createElement('button');
-    save.id = 'ytwash-save-for-later'; save.textContent = 'Save for later · YTWash';
-    save.style.cssText = 'padding:8px 16px;margin:8px;border-radius:18px;cursor:pointer';
-    save.addEventListener('click', () => {
-      const selected = new URLSearchParams(location.search).get('v');
-      if (selected) { saveForLater(selected); save.textContent = 'Saved · reminders in Options'; }
-    });
-    parent.append(save);
+    listeners?.abort(); current = ''; video = null; return;
   }
   if (current === id && video === active) return;
-  if (button) button.textContent = 'Save for later · YTWash';
   listeners?.abort(); listeners = new AbortController(); current = id; video = active; seconds = 0; previous = -1;
   if (!active) return;
   const options = { signal: listeners.signal };
@@ -45,7 +28,7 @@ document.addEventListener('ended', event => {
   if (event.target !== video || seconds < 5 || location.pathname !== '/watch' ||
       new URLSearchParams(location.search).get('v') !== current) return;
   chrome.storage.local.set({ ['ytwash:watched:' + current]: true });
-  chrome.storage.local.remove('ytwash:later:' + current);
+  chrome.storage.local.remove('ytwash:reminder:' + current);
 }, true);
 window.addEventListener('yt-navigate-finish', mount);
 window.setInterval(mount, 1500);

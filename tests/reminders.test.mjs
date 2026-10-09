@@ -3,92 +3,93 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import { createContext, runInContext } from 'node:vm';
-
 const source = stripTypeScriptTypes(readFileSync('src/reminders.ts', 'utf8'));
-const alarmName = 'ytwash:watch-later-reminder';
+const FIRST = 'abcdefghijk', SECOND = 'lmnopqrstuv';
 function harness(initial = {}) {
   const data = { ...initial }, alarms = new Map(), notices = [], tabs = [], events = {};
   const event = name => ({ addListener: handler => { events[name] = handler; } });
-  const context = createContext({ console, chrome: {
+  const change = values => {
+    const changes = {};
+    for (const [key, value] of Object.entries(values)) { changes[key] = { oldValue: data[key], newValue: value }; if (value === undefined) delete data[key]; else data[key] = value; }
+    events.change?.(changes, 'local');
+  };
+  const context = createContext({ console, URL, chrome: {
     storage: { local: {
       get: async keys => keys === null ? { ...data } : Object.fromEntries((Array.isArray(keys) ? keys : [keys]).map(key => [key, data[key]])),
-      set: async values => { Object.assign(data, values); },
+      set: async values => change(values),
+      remove: async keys => change(Object.fromEntries((Array.isArray(keys) ? keys : [keys]).filter(key => key in data).map(key => [key, undefined]))),
     }, onChanged: event('change') },
-    runtime: { onInstalled: event('install'), onStartup: event('startup'), getURL: path => 'chrome-extension://test/' + path },
+    runtime: { onInstalled: event('install'), onStartup: event('startup'), onMessage: event('message'), getURL: path => 'chrome-extension://test/' + path },
     alarms: { get: async name => alarms.get(name), create: async (name, details) => alarms.set(name, details), clear: async name => alarms.delete(name), onAlarm: event('alarm') },
-    notifications: { create: async (id, options) => { notices.push({ id, ...options }); }, clear: async () => true, onClicked: event('click') },
+    notifications: { create: async (id, options) => { notices.push({ id, ...options }); }, clear: async () => true,
+      onClicked: event('click'), onButtonClicked: event('button'), onClosed: event('close') },
     tabs: { create: async options => tabs.push(options) },
   } });
   runInContext(source, context);
-  return { data, alarms, notices, tabs, events, flush: () => runInContext('work', context) };
+  const flush = async () => { for (let i = 0; i < 4; i++) await runInContext('work', context); };
+  return { data, alarms, notices, tabs, events, change, flush,
+    message: message => new Promise(resolve => events.message(message, { url: 'chrome-extension://test/options.html' }, resolve)),
+    fire: async id => { alarms.delete('ytwash:reminder:' + id); events.alarm({ name: 'ytwash:reminder:' + id }); await flush(); },
+  };
 }
-test('opt-in schedules the chosen interval, survives startup, and disabling cancels', async () => {
-  const h = harness(); await h.flush(); assert.equal(h.alarms.size, 0);
-  h.data['ytwash:reminders-enabled'] = true;
-  h.events.change({ 'ytwash:reminders-enabled': {} }, 'local'); await h.flush();
-  assert.equal(h.alarms.get(alarmName).periodInMinutes, 7 * 1440);
-  const original = h.alarms.get(alarmName);
-  h.events.startup(); await h.flush(); assert.equal(h.alarms.get(alarmName), original);
-  h.data['ytwash:reminder-interval-days'] = 3;
-  h.events.change({ 'ytwash:reminder-interval-days': {} }, 'local'); await h.flush();
-  assert.equal(h.alarms.get(alarmName).periodInMinutes, 3 * 1440);
-  h.alarms.clear(); h.events.startup(); await h.flush(); assert.equal(h.alarms.size, 1);
-  h.data['ytwash:reminders-enabled'] = false;
-  h.events.change({ 'ytwash:reminders-enabled': {} }, 'local'); await h.flush(); assert.equal(h.alarms.size, 0);
+const entries = { 'ytwash:playlist:WL': { entries: [{ id: FIRST, title: 'First video', creator: 'Creator', key: 'a' }, { id: SECOND, title: 'Second video', creator: 'Creator', key: 'a' }] } };
+test('one-time reminders fire once, with no repeating alarm', async () => {
+  const h = harness(entries); await h.flush();
+  const response = await h.message({ type: 'ytwash:schedule-reminder', id: FIRST, preset: 'three-days' }); await h.flush();
+  assert.ok(response.dueAt > Date.now());
+  assert.equal(h.alarms.get('ytwash:reminder:' + FIRST).when, response.dueAt);
+  assert.equal(h.alarms.get('ytwash:reminder:' + FIRST).periodInMinutes, undefined);
+  await h.fire(FIRST); assert.equal(h.notices.length, 1);
+  assert.equal(h.notices[0].message, 'First video');
+  assert.equal(h.data['ytwash:reminder:' + FIRST], undefined);
+  assert.equal(h.alarms.size, 0);
+  await h.fire(FIRST); assert.equal(h.notices.length, 1);
 });
-test('empty or disabled queues stay silent and malformed settings default safely', async () => {
-  const h = harness({ 'ytwash:reminders-enabled': true, 'ytwash:reminder-interval-days': -1 }); await h.flush();
-  assert.equal(h.alarms.get(alarmName).periodInMinutes, 10080);
-  h.events.alarm({ name: alarmName }); await h.flush(); assert.equal(h.notices.length, 0);
-  h.data['ytwash:later:abcdefghijk'] = { title: 'Local video' };
-  h.data['ytwash:reminders-enabled'] = false;
-  h.events.alarm({ name: alarmName }); await h.flush(); assert.equal(h.notices.length, 0);
+test('presets use local calendar dates and custom dates must be in the future', async () => {
+  const h = harness(entries); await h.flush();
+  const today = await h.message({ type: 'ytwash:schedule-reminder', id: FIRST, preset: 'later-today' }); await h.flush();
+  assert.equal(new Date(today.dueAt).toDateString(), new Date().toDateString());
+  const week = await h.message({ type: 'ytwash:schedule-reminder', id: FIRST, preset: 'week' }); await h.flush();
+  const expected = new Date(); expected.setDate(expected.getDate() + 7);
+  assert.equal(new Date(week.dueAt).toDateString(), expected.toDateString());
+  const before = h.alarms.get('ytwash:reminder:' + FIRST).when;
+  const invalid = await h.message({ type: 'ytwash:schedule-reminder', id: FIRST, preset: 'custom', dueAt: 0 }); await h.flush();
+  assert.match(invalid.error, /future/); assert.equal(h.alarms.get('ytwash:reminder:' + FIRST).when, before);
+  const date = Date.now() + 3600000;
+  const custom = await h.message({ type: 'ytwash:schedule-reminder', id: FIRST, preset: 'custom', dueAt: date }); await h.flush();
+  assert.equal(custom.dueAt, date);
 });
-test('rotates local and indexed videos, skips completed videos, and opens a safe watch URL', async () => {
-  const h = harness({ 'ytwash:reminders-enabled': true,
-    'ytwash:playlist:WL': { entries: [{ id: 'abcdefghijk', creator: 'Creator' }, { id: 'invalid', creator: 'Bad' }] },
-    'ytwash:later:lmnopqrstuv': { title: 'Local video' },
-  }); await h.flush();
-  h.events.alarm({ name: alarmName }); await h.flush();
-  assert.equal(h.data['ytwash:last-reminded'], 'abcdefghijk');
-  h.events.alarm({ name: alarmName }); await h.flush();
-  assert.equal(h.data['ytwash:last-reminded'], 'lmnopqrstuv');
-  assert.match(h.notices[1].message, /Local video/);
-  h.events.click('ytwash:watch-later'); await h.flush();
-  assert.equal(h.tabs[0].url, 'https://www.youtube.com/watch?v=lmnopqrstuv');
-  h.data['ytwash:watched:abcdefghijk'] = true;
-  h.events.alarm({ name: alarmName }); await h.flush();
-  assert.equal(h.data['ytwash:last-reminded'], 'lmnopqrstuv');
-  h.data['ytwash:watched:lmnopqrstuv'] = true;
-  const count = h.notices.length;
-  h.events.alarm({ name: alarmName }); await h.flush(); assert.equal(h.notices.length, count);
-  h.data['ytwash:reminder-video'] = 'https://evil.test';
-  h.events.click('ytwash:watch-later'); await h.flush(); assert.equal(h.tabs.length, 1);
+test('startup restores missing one-time alarms and retires legacy periodic reminders', async () => {
+  const time = Date.now() + 3600000;
+  const h = harness({ ...entries, 'ytwash:reminders-enabled': true, 'ytwash:reminder-interval-days': 7,
+    ['ytwash:later:' + FIRST]: { title: 'Old local save' }, ['ytwash:reminder:' + FIRST]: { id: FIRST, title: 'First video', dueAt: time } });
+  h.alarms.set('ytwash:watch-later-reminder', { periodInMinutes: 10080 });
+  await h.flush();
+  assert.equal(h.alarms.has('ytwash:watch-later-reminder'), false);
+  assert.equal(h.data['ytwash:later:' + FIRST], undefined);
+  assert.equal(h.alarms.get('ytwash:reminder:' + FIRST).when, time);
+  const alarm = h.alarms.get('ytwash:reminder:' + FIRST);
+  h.events.startup(); await h.flush(); assert.equal(h.alarms.get('ytwash:reminder:' + FIRST), alarm);
 });
-
-test('local saves work without playlist membership; completion requires playback and saving again requeues', () => {
-  const data = {}, handlers = {}, documentHandlers = {};
-  const video = { paused: false, seeking: false, currentTime: 0,
-    addEventListener: (name, handler) => { handlers[name] = handler; } };
-  const button = { textContent: '' };
-  const context = createContext({ console, AbortController, URLSearchParams,
-    location: { pathname: '/watch', search: '?v=abcdefghijk' },
-    window: { addEventListener() {}, setInterval() {} },
-    document: { title: 'Local video - YouTube', getElementById: () => button,
-      querySelector: selector => selector === 'video.html5-main-video' ? video : null,
-      addEventListener: (name, handler) => { documentHandlers[name] = handler; } },
-    chrome: { storage: { local: { set: values => Object.assign(data, values), remove: key => { delete data[key]; } } } },
-  });
-  const queue = stripTypeScriptTypes(readFileSync('src/reminder-queue.ts', 'utf8')).replace('export function', 'function');
-  runInContext(queue, context);
-  runInContext("saveForLater('abcdefghijk')", context);
-  assert.equal(data['ytwash:later:abcdefghijk'].title, 'Local video');
-  documentHandlers.ended({ target: video }); assert.equal(data['ytwash:watched:abcdefghijk'], false);
-  for (let time = 0; time <= 6; time++) { video.currentTime = time; handlers.timeupdate(); }
-  documentHandlers.ended({ target: video });
-  assert.equal(data['ytwash:watched:abcdefghijk'], true);
-  assert.equal(data['ytwash:later:abcdefghijk'], undefined);
-  runInContext("saveForLater('abcdefghijk')", context);
-  assert.equal(data['ytwash:watched:abcdefghijk'], false);
-  assert.ok(data['ytwash:later:abcdefghijk']);
+test('watching or canceling a reminder clears its alarm', async () => {
+  const h = harness(entries); await h.flush();
+  await h.message({ type: 'ytwash:schedule-reminder', id: FIRST, preset: 'week' }); await h.flush();
+  h.change({ ['ytwash:watched:' + FIRST]: true }); await h.flush();
+  assert.equal(h.alarms.size, 0); await h.fire(FIRST); assert.equal(h.notices.length, 0);
+  await h.message({ type: 'ytwash:schedule-reminder', id: SECOND, preset: 'week' }); await h.flush();
+  h.change({ ['ytwash:reminder:' + SECOND]: undefined }); await h.flush();
+  assert.equal(h.alarms.size, 0);
+});
+test('notification actions watch, reschedule explicitly, or dismiss without repeating', async () => {
+  const h = harness(entries); await h.flush();
+  await h.message({ type: 'ytwash:schedule-reminder', id: FIRST, preset: 'week' }); await h.flush(); await h.fire(FIRST);
+  h.events.button('ytwash:reminder-notice:' + FIRST, 1); await h.flush();
+  assert.equal(h.tabs[0].url, 'chrome-extension://test/options.html?remind=' + FIRST);
+  assert.equal(h.alarms.size, 0);
+  const response = await h.message({ type: 'ytwash:schedule-reminder', id: FIRST, preset: 'three-days' }); await h.flush(); assert.ok(response.dueAt);
+  await h.fire(FIRST); h.events.click('ytwash:reminder-notice:' + FIRST); await h.flush();
+  assert.equal(h.tabs[1].url, 'https://www.youtube.com/watch?v=' + FIRST);
+  h.events.close('ytwash:reminder-notice:' + FIRST, true); await h.flush(); assert.equal(h.alarms.size, 0);
+  const invalid = await h.message({ type: 'ytwash:schedule-reminder', id: '12345678901', preset: 'week' }); await h.flush();
+  assert.match(invalid.error, /Watch Later/);
 });

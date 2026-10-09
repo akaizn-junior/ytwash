@@ -160,7 +160,7 @@ test('built-in watch features cannot be disabled by legacy stored preferences', 
   try {
     await page.goto('https://www.youtube.com/watch?v=' + FIRST);
     const options = await openOptions(context);
-    await expect(options.locator('input[data-key]')).toHaveCount(3);
+    await expect(options.locator('input[data-key]')).toHaveCount(2);
     await options.evaluate(() => chrome.storage.local.set({
       'ytwash:enhanced-save': false, 'ytwash:resume-enabled': false, 'ytwash:group-playback': false,
     }));
